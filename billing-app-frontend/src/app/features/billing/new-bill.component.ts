@@ -40,8 +40,8 @@ interface CartItem {
             <div class="form-group">
               <label>Customer (optional)</label>
               <select class="form-control" [(ngModel)]="selectedCustomerId">
-                <option [value]="null">Walk-in Customer</option>
-                <option *ngFor="let c of customers" [value]="c.id">{{ c.name }} ({{ c.phone }})</option>
+                <option [ngValue]="null">Walk-in Customer</option>
+                <option *ngFor="let c of customers" [ngValue]="c.id">{{ c.name }} ({{ c.phone }})</option>
               </select>
             </div>
           </div>
@@ -67,6 +67,9 @@ interface CartItem {
                   </span>
                 </div>
               </button>
+            </div>
+            <div *ngIf="products.length === 0" class="text-muted text-sm mt-3">
+              No products found in catalogue. Please add products first.
             </div>
           </div>
 
@@ -132,10 +135,10 @@ interface CartItem {
 
               <div *ngFor="let pmt of payments; let i = index" class="payment-row">
                 <select class="form-control" [(ngModel)]="pmt.mode" style="flex:1">
-                  <option [value]="1">Cash</option>
-                  <option [value]="2">Card</option>
-                  <option [value]="3">UPI</option>
-                  <option [value]="4">Credit</option>
+                  <option [ngValue]="1">Cash</option>
+                  <option [ngValue]="2">Card</option>
+                  <option [ngValue]="3">UPI</option>
+                  <option [ngValue]="4">Credit</option>
                 </select>
                 <input type="number" class="form-control" [(ngModel)]="pmt.amount" placeholder="Amount" style="width:120px" (change)="calcTotals()"/>
                 <button class="btn btn-ghost btn-icon btn-sm" (click)="removePayment(i)">
@@ -268,11 +271,43 @@ export class NewBillComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.productService.getAll().subscribe(r => {
-      if (r.success) { this.products = r.data!; this.filteredProducts = this.products; }
+    this.productService.getAll().subscribe({
+      next: (r: any) => {
+        if (Array.isArray(r)) {
+          this.products = r;
+        } else if (r?.data?.items && Array.isArray(r.data.items)) {
+          this.products = r.data.items;
+        } else if (r?.data && Array.isArray(r.data)) {
+          this.products = r.data;
+        } else if (r?.Data?.items && Array.isArray(r.Data.items)) {
+          this.products = r.Data.items;
+        } else if (r?.Data && Array.isArray(r.Data)) {
+          this.products = r.Data;
+        } else {
+          this.products = [];
+        }
+        this.filteredProducts = this.products;
+      },
+      error: (err) => console.error('Error loading products for billing:', err)
     });
-    this.customerService.getAll(1, 200).subscribe(r => {
-      if (r.success) this.customers = r.data!.items;
+
+    this.customerService.getAll(1, 200).subscribe({
+      next: (r: any) => {
+        if (Array.isArray(r)) {
+          this.customers = r;
+        } else if (r?.data?.items && Array.isArray(r.data.items)) {
+          this.customers = r.data.items;
+        } else if (r?.data && Array.isArray(r.data)) {
+          this.customers = r.data;
+        } else if (r?.Data?.items && Array.isArray(r.Data.items)) {
+          this.customers = r.Data.items;
+        } else if (r?.Data && Array.isArray(r.Data)) {
+          this.customers = r.Data;
+        } else {
+          this.customers = [];
+        }
+      },
+      error: (err) => console.error('Error loading customers for billing:', err)
     });
   }
 
@@ -309,12 +344,16 @@ export class NewBillComponent implements OnInit {
   }
 
   getItemTotal(item: any): number {
-    return item.quantity * item.unitPrice * (1 + item.taxPercent / 100) - item.discount;
+    const qty = Number(item.quantity) || 0;
+    const price = Number(item.unitPrice) || 0;
+    const tax = Number(item.taxPercent) || 0;
+    const disc = Number(item.discount) || 0;
+    return qty * price * (1 + tax / 100) - disc;
   }
 
   calcTotals(): void {
-    this.subTotal = this.cart.reduce((s: number, i: any) => s + i.quantity * i.unitPrice, 0);
-    this.taxAmount = this.cart.reduce((s: number, i: any) => s + i.quantity * i.unitPrice * (i.taxPercent / 100), 0);
+    this.subTotal = this.cart.reduce((s: number, i: any) => s + (Number(i.quantity) || 0) * (Number(i.unitPrice) || 0), 0);
+    this.taxAmount = this.cart.reduce((s: number, i: any) => s + (Number(i.quantity) || 0) * (Number(i.unitPrice) || 0) * ((Number(i.taxPercent) || 0) / 100), 0);
     this.totalAmount = this.subTotal + this.taxAmount;
     this.paidAmount = this.payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
     this.balanceDue = Math.max(0, this.totalAmount - this.paidAmount);
@@ -324,55 +363,103 @@ export class NewBillComponent implements OnInit {
   removePayment(i: number): void { this.payments.splice(i, 1); this.calcTotals(); }
 
   buildRequest(): CreateBillRequest {
+    const custId = this.selectedCustomerId && (this.selectedCustomerId as any) !== 'null' ? Number(this.selectedCustomerId) : undefined;
     return {
-      customerId: this.selectedCustomerId ?? undefined,
-      notes: this.notes || undefined,
+      customerId: custId,
+      notes: this.notes?.trim() || undefined,
       items: this.cart.map((i: any) => ({
-        productId: i.productId, quantity: i.quantity,
-        unitPrice: i.unitPrice, discount: i.discount
+        productId: Number(i.productId),
+        quantity: Number(i.quantity) || 1,
+        unitPrice: Number(i.unitPrice) || 0,
+        discount: Number(i.discount) || 0
       })),
-      payments: this.payments.map(p => ({ mode: p.mode, amount: p.amount }))
+      payments: this.payments.map(p => ({
+        mode: Number(p.mode),
+        amount: Number(p.amount) || 0
+      }))
     };
   }
 
   saveDraft(): void {
+    if (this.cart.length === 0) {
+      this.toast.error('Cart is empty');
+      return;
+    }
     this.saving = 'draft';
     this.billingService.create(this.buildRequest()).subscribe({
       next: res => {
-        if (res.success) { this.toast.success('Bill saved as draft!'); this.router.navigate(['/billing']); }
+        if (res.success) {
+          this.toast.success('Bill saved as draft!');
+          this.router.navigate(['/billing']);
+        } else {
+          this.toast.error(res.message || 'Failed to save bill');
+        }
         this.saving = false;
       },
-      error: () => { this.saving = false; }
+      error: (err) => {
+        console.error('Error saving draft:', err);
+        this.toast.error('Failed to save bill draft');
+        this.saving = false;
+      }
     });
   }
 
   holdBill(): void {
+    if (this.cart.length === 0) {
+      this.toast.error('Cart is empty');
+      return;
+    }
     this.saving = 'hold';
     this.billingService.create(this.buildRequest()).subscribe({
       next: res => {
-        if (res.success && res.data) {
-          this.billingService.hold(res.data.id).subscribe(() => {
-            this.toast.info('Bill placed on hold.'); this.router.navigate(['/billing']);
+        const billData = res?.data || (res as any)?.Data;
+        if (res.success && billData) {
+          this.billingService.hold(billData.id).subscribe({
+            next: () => {
+              this.toast.info('Bill placed on hold.');
+              this.router.navigate(['/billing']);
+            },
+            error: () => { this.saving = false; }
           });
+        } else {
+          this.toast.error(res.message || 'Failed to create bill');
+          this.saving = false;
         }
-        this.saving = false;
       },
-      error: () => { this.saving = false; }
+      error: (err) => {
+        console.error('Error holding bill:', err);
+        this.toast.error('Failed to place bill on hold');
+        this.saving = false;
+      }
     });
   }
 
   finalizeBill(): void {
+    if (this.cart.length === 0) {
+      this.toast.error('Cart is empty');
+      return;
+    }
+    if (this.payments.length === 0) {
+      this.payments.push({ mode: PaymentMode.Cash, amount: this.totalAmount });
+      this.calcTotals();
+    }
     this.saving = 'finalize';
     this.billingService.create(this.buildRequest()).subscribe({
       next: res => {
-        if (res.success && res.data) {
-          this.billingService.finalize(res.data.id).subscribe(() => {
-            this.toast.success('Bill finalized!'); this.router.navigate(['/billing']);
-          });
+        const billData = res?.data || (res as any)?.Data;
+        if (res.success && billData) {
+          this.toast.success('Bill created and finalized!');
+          this.router.navigate(['/billing']);
+        } else {
+          this.toast.error(res.message || 'Failed to finalize bill');
+          this.saving = false;
         }
-        this.saving = false;
       },
-      error: () => { this.saving = false; }
+      error: (err) => {
+        console.error('Error finalizing bill:', err);
+        this.toast.error('Failed to finalize bill');
+        this.saving = false;
+      }
     });
   }
 }

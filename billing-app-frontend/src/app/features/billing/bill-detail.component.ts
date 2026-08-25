@@ -72,7 +72,7 @@ import { FormsModule } from '@angular/forms';
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let item of bill.billItems">
+              <tr *ngFor="let item of (bill.billItems || bill?.items || [])">
                 <td class="font-medium">{{ item.productName }}</td>
                 <td class="text-muted text-sm">{{ item.sku }}</td>
                 <td class="text-muted text-sm">{{ item.unit }}</td>
@@ -92,11 +92,11 @@ import { FormsModule } from '@angular/forms';
       <div class="summary-grid mt-4">
         <div class="card">
           <h3 class="mb-4">Payments</h3>
-          <div *ngFor="let pmt of bill.payments" class="info-row">
+          <div *ngFor="let pmt of (bill.payments || [])" class="info-row">
             <span>{{ getPaymentMode(pmt.mode) }}</span>
             <strong class="text-success">₹{{ pmt.amount | number:'1.2-2' }}</strong>
           </div>
-          <div class="info-row" *ngIf="bill.payments.length === 0"><p class="text-muted">No payments recorded</p></div>
+          <div class="info-row" *ngIf="!bill.payments || bill.payments.length === 0"><p class="text-muted">No payments recorded</p></div>
         </div>
         <div class="card">
           <h3 class="mb-4">Totals</h3>
@@ -153,33 +153,75 @@ export class BillDetailComponent implements OnInit {
     private billingService: BillingService,
     private toast: ToastService,
     private router: Router
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
-    this.billingService.getById(id).subscribe(r => { if (r.success) this.bill = r.data!; });
+    this.billingService.getById(id).subscribe({
+      next: (r: any) => {
+        const data = r?.data || r?.Data || r;
+        if (data && (data.id || data.invoiceNo)) {
+          this.bill = data;
+        }
+      },
+      error: (err) => console.error('Error fetching bill detail:', err)
+    });
   }
 
   finalize(): void {
-    this.billingService.finalize(this.bill!.id).subscribe(r => {
-      if (r.success) { this.toast.success('Finalized!'); this.bill = r.data!; }
+    if (!this.bill) return;
+    this.billingService.finalize(this.bill.id).subscribe({
+      next: (r: any) => {
+        const data = r?.data || r?.Data || r;
+        if (r.success || data?.id) {
+          this.toast.success('Finalized!');
+          this.bill = data;
+        } else {
+          this.toast.error(r.message || 'Failed to finalize');
+        }
+      },
+      error: () => this.toast.error('Failed to finalize bill')
     });
   }
 
   hold(): void {
-    this.billingService.hold(this.bill!.id).subscribe(() => { this.toast.info('Bill on hold.'); });
+    if (!this.bill) return;
+    this.billingService.hold(this.bill.id).subscribe({
+      next: (r: any) => {
+        if (r.success !== false) {
+          this.toast.info('Bill on hold.');
+          this.router.navigate(['/billing']);
+        }
+      },
+      error: () => this.toast.error('Failed to hold bill')
+    });
   }
 
   cancelBill(): void {
-    this.billingService.cancel(this.bill!.id, this.cancelReason).subscribe(() => {
-      this.toast.success('Bill cancelled.'); this.showCancelModal = false;
-      this.router.navigate(['/billing']);
+    if (!this.bill || !this.cancelReason) return;
+    this.billingService.cancel(this.bill.id, this.cancelReason).subscribe({
+      next: (r: any) => {
+        if (r.success !== false) {
+          this.toast.success('Bill cancelled.');
+          this.showCancelModal = false;
+          this.router.navigate(['/billing']);
+        }
+      },
+      error: () => this.toast.error('Failed to cancel bill')
     });
   }
 
   processReturn(): void {
-    this.billingService.processReturn(this.bill!.id).subscribe(r => {
-      if (r.success) { this.toast.success('Return processed!'); this.bill = r.data!; }
+    if (!this.bill) return;
+    this.billingService.processReturn(this.bill.id).subscribe({
+      next: (r: any) => {
+        const data = r?.data || r?.Data || r;
+        if (r.success !== false) {
+          this.toast.success('Return processed!');
+          if (data?.id) this.bill = data;
+        }
+      },
+      error: () => this.toast.error('Failed to process return')
     });
   }
 

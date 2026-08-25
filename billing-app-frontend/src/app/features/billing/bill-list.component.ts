@@ -19,7 +19,7 @@ import { ToastService } from '../../core/services/toast.service';
       <div class="page-header">
         <div>
           <h1>Bills</h1>
-          <p class="page-subtitle">{{ result?.totalCount ?? 0 }} total invoices</p>
+          <p class="page-subtitle">{{ result?.totalCount ?? bills.length }} total invoices</p>
         </div>
         <div class="page-actions">
           <a routerLink="/billing/new" class="btn btn-primary">
@@ -129,7 +129,7 @@ export class BillListComponent implements OnInit {
   toDate = '';
   readonly BillStatus = BillStatus;
 
-  constructor(private billingService: BillingService, private toast: ToastService) {}
+  constructor(private billingService: BillingService, private toast: ToastService) { }
 
   ngOnInit(): void { this.load(); }
 
@@ -137,12 +137,25 @@ export class BillListComponent implements OnInit {
     this.loading = true;
     this.billingService.getAll(this.page, 20, this.statusFilter || undefined,
       this.fromDate || undefined, this.toDate || undefined).subscribe({
-      next: res => {
-        if (res.success && res.data) { this.result = res.data; this.bills = res.data.items; }
-        this.loading = false;
-      },
-      error: () => { this.loading = false; }
-    });
+        next: (res: any) => {
+          const data = res?.data || res?.Data || res;
+          if (data?.items && Array.isArray(data.items)) {
+            this.result = data;
+            this.bills = data.items;
+          } else if (Array.isArray(data)) {
+            this.bills = data;
+            this.result = { items: data, totalCount: data.length, page: 1, pageSize: 20, totalPages: 1 };
+          } else {
+            this.bills = [];
+          }
+          this.loading = false;
+        },
+        error: (err) => {
+          console.error('Error loading bills:', err);
+          this.bills = [];
+          this.loading = false;
+        }
+      });
   }
 
   changePage(p: number): void { this.page = p; this.load(); }
@@ -150,7 +163,15 @@ export class BillListComponent implements OnInit {
 
   finalize(id: number): void {
     this.billingService.finalize(id).subscribe({
-      next: res => { if (res.success) { this.toast.success('Bill finalized successfully!'); this.load(); } }
+      next: (res: any) => {
+        if (res.success !== false) {
+          this.toast.success('Bill finalized successfully!');
+          this.load();
+        } else {
+          this.toast.error(res.message || 'Failed to finalize');
+        }
+      },
+      error: () => this.toast.error('Failed to finalize bill')
     });
   }
 }

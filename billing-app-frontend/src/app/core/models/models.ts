@@ -224,6 +224,7 @@ export interface BillDto {
   financialYear?: string;
   createdByName?: string;
   billItems: BillItemDto[];
+  items?: BillItemDto[];
   payments: BillPaymentDto[];
 }
 
@@ -277,7 +278,7 @@ export interface PurchaseDto {
   totalAmount: number;
   notes?: string;
   createdByName?: string;
-  items: PurchaseItemDto[];
+  items?: PurchaseItemDto[];
 }
 
 export interface CreatePurchaseItemRequest {

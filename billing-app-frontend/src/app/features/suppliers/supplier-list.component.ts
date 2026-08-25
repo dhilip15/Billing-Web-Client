@@ -62,12 +62,42 @@ export class SupplierListComponent implements OnInit {
   suppliers: SupplierDto[] = []; loading = true; showModal = false; editId: number | null = null; saving = false; form: any = {};
   constructor(private supplierService: SupplierService, private toast: ToastService) {}
   ngOnInit(): void { this.load(); }
-  load(): void { this.supplierService.getAll().subscribe(r => { if (r.success) this.suppliers = r.data!; this.loading = false; }); }
+  load(): void {
+    this.loading = true;
+    this.supplierService.getAll().subscribe({
+      next: (r: any) => {
+        if (Array.isArray(r)) {
+          this.suppliers = r;
+        } else if (r?.data?.items && Array.isArray(r.data.items)) {
+          this.suppliers = r.data.items;
+        } else if (r?.data && Array.isArray(r.data)) {
+          this.suppliers = r.data;
+        } else if (r?.Data?.items && Array.isArray(r.Data.items)) {
+          this.suppliers = r.Data.items;
+        } else if (r?.Data && Array.isArray(r.Data)) {
+          this.suppliers = r.Data;
+        } else {
+          this.suppliers = [];
+        }
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error('Error loading suppliers:', err);
+        this.suppliers = [];
+        this.loading = false;
+      }
+    });
+  }
   openModal(s?: SupplierDto): void { this.editId = s?.id ?? null; this.form = s ? { ...s } : { name: '', phone: '', email: '', address: '', gstNumber: '' }; this.showModal = true; }
   save(): void {
+    if (!this.form.name?.trim()) {
+      this.toast.error('Supplier name is required');
+      return;
+    }
     this.saving = true;
     const obs = this.editId ? this.supplierService.update(this.editId, this.form) : this.supplierService.create(this.form);
-    obs.subscribe({ next: r => { if (r.success) { this.toast.success('Saved!'); this.showModal = false; this.load(); } this.saving = false; }, error: () => { this.saving = false; } });
+    obs.subscribe({ next: r => { if (r.success) { this.toast.success('Saved!'); this.showModal = false; this.load(); } else { this.toast.error(r.message || 'Failed to save'); } this.saving = false; }, error: () => { this.saving = false; } });
   }
   del(id: number): void { if (!confirm('Delete?')) return; this.supplierService.delete(id).subscribe(r => { if (r.success) { this.toast.success('Deleted!'); this.load(); } }); }
 }
+
