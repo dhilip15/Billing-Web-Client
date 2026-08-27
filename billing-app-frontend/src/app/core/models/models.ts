@@ -244,6 +244,8 @@ export interface CreateBillItemRequest {
   productId: number;
   quantity: number;
   unitPrice: number;
+  taxPercent: number;
+  discountPercent: number;
   discount?: number;
 }
 

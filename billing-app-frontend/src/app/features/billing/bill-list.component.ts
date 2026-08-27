@@ -55,8 +55,8 @@ import { ToastService } from '../../core/services/toast.service';
                 <th>Customer</th>
                 <th>Items</th>
                 <th>Total</th>
+                <th>Tax</th>
                 <th>Paid</th>
-                <th>Balance</th>
                 <th>Status</th>
                 <th></th>
               </tr>
@@ -68,8 +68,8 @@ import { ToastService } from '../../core/services/toast.service';
                 <td>{{ bill.customerName || 'Walk-in' }}</td>
                 <td class="text-muted text-sm">{{ bill.itemCount }} item(s)</td>
                 <td class="font-semibold">₹{{ bill.totalAmount | number:'1.2-2' }}</td>
+                <td class="text-warning">₹{{ (bill.taxAmount || 0) | number:'1.2-2' }}</td>
                 <td class="text-success">₹{{ bill.paidAmount | number:'1.2-2' }}</td>
-                <td [class.text-error]="bill.balanceDue > 0">₹{{ bill.balanceDue | number:'1.2-2' }}</td>
                 <td><app-status-badge [status]="bill.status"></app-status-badge></td>
                 <td>
                   <div class="row-actions">

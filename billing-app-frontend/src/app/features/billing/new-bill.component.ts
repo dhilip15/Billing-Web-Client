@@ -419,6 +419,8 @@ export class NewBillComponent implements OnInit, AfterViewInit {
         productId: Number(i.productId),
         quantity: Number(i.quantity) || 1,
         unitPrice: Number(i.unitPrice) || 0,
+        taxPercent: Number(i.taxPercent) || 0,
+        discountPercent: Number(i.discount) || 0,
         discount: Number(i.discount) || 0
       })),
       payments: this.payments.map(p => ({
