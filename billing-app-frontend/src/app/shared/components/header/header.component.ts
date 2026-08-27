@@ -31,9 +31,10 @@ import { AuthService } from '../../../core/services/auth.service';
       height: var(--header-height);
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 32px;
-      background: var(--color-bg-secondary);
-      border-bottom: 1px solid var(--color-border);
+      background: #092e1b;
+      border-bottom: 1px solid rgba(65, 220, 142, 0.2);
       position: sticky; top: 0; z-index: 50;
+      box-sizing: border-box;
     }
 
     .header-left {
@@ -42,12 +43,11 @@ import { AuthService } from '../../../core/services/auth.service';
 
     .page-title {
       font-size: 1.125rem; font-weight: 700;
-      background: linear-gradient(135deg, var(--color-text), var(--color-primary-light));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      color: #ffffff;
     }
 
     .page-subtitle {
-      font-size: 0.75rem; color: var(--color-text-muted);
+      font-size: 0.75rem; color: rgba(255, 255, 255, 0.75);
     }
 
     .header-right { display: flex; align-items: center; gap: 16px; }
@@ -55,24 +55,24 @@ import { AuthService } from '../../../core/services/auth.service';
     .user-chip {
       display: flex; align-items: center; gap: 10px;
       padding: 6px 14px 6px 6px;
-      background: var(--color-bg-elevated);
-      border: 1px solid var(--color-border);
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: var(--radius-full);
       cursor: default;
     }
 
     .chip-avatar {
       width: 30px; height: 30px;
-      background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+      background: #41dc8e;
       border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-weight: 700; font-size: 0.8rem; color: white;
+      font-weight: 700; font-size: 0.8rem; color: #052e16;
     }
 
     .chip-info {
       display: flex; flex-direction: column;
-      .chip-name { font-size: 0.8rem; font-weight: 600; color: var(--color-text); }
-      .chip-role { font-size: 0.65rem; color: var(--color-text-muted); }
+      .chip-name { font-size: 0.8rem; font-weight: 600; color: #ffffff; }
+      .chip-role { font-size: 0.65rem; color: rgba(255, 255, 255, 0.75); }
     }
   `]
 })

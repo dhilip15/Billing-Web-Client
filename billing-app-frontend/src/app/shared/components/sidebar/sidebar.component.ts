@@ -2,7 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { AuthService } from '../../../core/services/auth.service';
+import { SidebarService } from '../../../core/services/sidebar.service';
 
 interface NavItem {
   label: string;
@@ -19,24 +21,22 @@ interface NavItem {
   template: `
     <aside class="sidebar" [class.collapsed]="collapsed">
       <!-- Logo -->
-      <div class="sidebar-logo">
+      <div class="sidebar-logo"(click)="toggleSidebar()" [title]="collapsed ? 'Expand sidebar' : 'Collapse sidebar'">
         <div class="logo-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
             <rect x="9" y="3" width="6" height="4" rx="1"/>
             <path d="M9 14l2 2 4-4"/>
           </svg>
+          <button *ngIf="!collapsed" class="sidebar-toggle" style="margin-right: 25px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path *ngIf="!collapsed" d="M15 18l-6-6 6-6"/>
+              <path *ngIf="collapsed" d="M9 18l6-6-6-6"/>
+            </svg>
+          </button>
         </div>
         <span class="logo-text">BillPro</span>
       </div>
-
-      <!-- Toggle -->
-      <button class="sidebar-toggle" (click)="collapsed = !collapsed" title="Toggle sidebar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path *ngIf="!collapsed" d="M15 18l-6-6 6-6"/>
-          <path *ngIf="collapsed" d="M9 18l6-6-6-6"/>
-        </svg>
-      </button>
 
       <!-- Nav -->
       <nav class="sidebar-nav">
@@ -44,8 +44,8 @@ interface NavItem {
           <a class="nav-item"
              [routerLink]="item.route"
              [class.active]="isActive(item.route)"
-             [title]="collapsed ? item.label : ''">
-            <span class="nav-icon" [innerHTML]="item.icon"></span>
+             [title]="item.label">
+            <span class="nav-icon" [innerHTML]="getSafeIcon(item.icon)"></span>
             <span class="nav-label">{{ item.label }}</span>
             <span class="active-indicator"></span>
           </a>
@@ -54,7 +54,7 @@ interface NavItem {
 
       <!-- User -->
       <div class="sidebar-user">
-        <div class="user-avatar">{{ userInitial }}</div>
+        <div class="user-avatar" [title]="userName">{{ userInitial }}</div>
         <div class="user-info">
           <div class="user-name">{{ userName }}</div>
           <div class="user-role">{{ userRole }}</div>
@@ -71,8 +71,8 @@ interface NavItem {
     .sidebar {
       width: var(--sidebar-width);
       height: 100vh;
-      background: var(--color-sidebar);
-      border-right: 1px solid var(--color-border);
+      background: #092e1b;
+      border-right: 1px solid rgba(65, 220, 142, 0.2);
       display: flex; flex-direction: column;
       position: fixed; left: 0; top: 0; bottom: 0;
       z-index: 100;
@@ -82,57 +82,66 @@ interface NavItem {
       &.collapsed {
         width: var(--sidebar-collapsed-width);
         .logo-text, .nav-label, .user-info { display: none; }
-        .sidebar-user { padding: 16px 10px; justify-content: center; }
+        .sidebar-logo { padding: 0; justify-content: center; }
+        .sidebar-nav { padding: 16px 6px; }
+        .nav-item { justify-content: center; padding: 11px 0; gap: 0; }
+        .sidebar-user { padding: 12px 6px; justify-content: center; }
         .logout-btn { display: none; }
       }
     }
 
     .sidebar-logo {
+      height: var(--header-height);
       display: flex; align-items: center; gap: 12px;
-      padding: 22px 20px 18px;
-      border-bottom: 1px solid var(--color-border);
+      padding: 0 20px;
+      border-bottom: 1px solid rgba(65, 220, 142, 0.2);
+      box-sizing: border-box;
     }
 
     .logo-icon {
       width: 36px; height: 36px; flex-shrink: 0;
-      background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+      background: #41dc8e;
       border-radius: var(--radius-md);
       display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 0 16px rgba(99,102,241,0.4);
-      svg { width: 20px; height: 20px; color: white; }
+      box-shadow: 0 0 16px rgba(65, 220, 142, 0.4);
+      svg { width: 20px; height: 20px; color: #052e16; }
     }
 
     .logo-text {
       font-size: 1.25rem; font-weight: 800;
-      background: linear-gradient(135deg, #fff 30%, var(--color-primary-light));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      color: #ffffff;
       white-space: nowrap;
     }
 
     .sidebar-toggle {
-      position: absolute; right: -14px; top: 68px;
+      position: absolute; right: -14px; top: calc((var(--header-height) - 28px) / 2);
       width: 28px; height: 28px;
-      background: var(--color-bg-card);
-      border: 1px solid var(--color-border);
+      background: #0d3a22;
+      border: 1px solid rgba(65, 220, 142, 0.3);
       border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      cursor: pointer; color: var(--color-text-secondary);
+      cursor: pointer; color: #ffffff;
       transition: all var(--transition-fast);
-      svg { width: 14px; height: 14px; }
-      &:hover { background: var(--color-primary); color: white; border-color: var(--color-primary); }
+      z-index: 10;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      svg { width: 14px; height: 14px;color: #ffffff }
+      &:hover { background: #41dc8e; color: #ffffff; border-color: #41dc8e; }
     }
 
     .sidebar-nav {
       flex: 1; padding: 16px 12px;
       overflow-y: auto; overflow-x: hidden;
       display: flex; flex-direction: column; gap: 2px;
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+      &::-webkit-scrollbar { display: none; }
     }
 
     .nav-item {
       display: flex; align-items: center; gap: 12px;
       padding: 11px 12px;
       border-radius: var(--radius-md);
-      color: var(--color-text-secondary);
+      color: rgba(255, 255, 255, 0.85);
       font-size: 0.875rem; font-weight: 500;
       text-decoration: none;
       transition: all var(--transition-fast);
@@ -140,65 +149,73 @@ interface NavItem {
       white-space: nowrap;
 
       &:hover {
-        background: var(--color-sidebar-hover);
-        color: var(--color-text);
+        background: rgba(255, 255, 255, 0.12);
+        color: #ffffff;
       }
 
       &.active {
-        background: var(--color-sidebar-active);
-        color: var(--color-primary-light);
-        font-weight: 600;
+        background: #41dc8e;
+        color: #052e16;
+        font-weight: 700;
       }
 
       .active-indicator {
         display: none;
         position: absolute; right: 0; top: 25%; bottom: 25%;
         width: 3px; border-radius: 2px;
-        background: var(--color-primary-light);
+        background: #ffffff;
       }
       &.active .active-indicator { display: block; }
     }
 
     .nav-icon {
-      width: 20px; height: 20px; flex-shrink: 0;
+      width: 24px; height: 24px; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
-      ::ng-deep svg { width: 18px; height: 18px; }
+      color: inherit;
+      ::ng-deep svg { width: 20px; height: 20px; stroke: currentColor; display: block; }
     }
 
     .sidebar-user {
       padding: 12px 16px;
-      border-top: 1px solid var(--color-border);
+      border-top: 1px solid rgba(65, 220, 142, 0.2);
       display: flex; align-items: center; gap: 10px;
     }
 
     .user-avatar {
       width: 36px; height: 36px; flex-shrink: 0;
-      background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+      background: #41dc8e;
       border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-weight: 700; font-size: 0.875rem; color: white;
+      font-weight: 700; font-size: 0.875rem; color: #052e16;
     }
 
     .user-info {
       flex: 1; overflow: hidden;
-      .user-name { font-size: 0.8125rem; font-weight: 600; color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .user-role { font-size: 0.7rem; color: var(--color-text-muted); }
+      .user-name { font-size: 0.8125rem; font-weight: 600; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .user-role { font-size: 0.7rem; color: rgba(255, 255, 255, 0.7); }
     }
 
     .logout-btn {
       background: none; border: none; cursor: pointer;
-      color: var(--color-text-muted);
+      color: rgba(255, 255, 255, 0.7);
       padding: 4px;
       border-radius: var(--radius-sm);
       transition: color var(--transition-fast);
       svg { width: 16px; height: 16px; display: block; }
-      &:hover { color: var(--color-error); }
+      &:hover { color: #f87171; }
     }
   `]
 })
 export class SidebarComponent implements OnInit {
-  collapsed = false;
   currentRoute = '';
+
+  get collapsed(): boolean {
+    return this.sidebarService.collapsed();
+  }
+
+  toggleSidebar(): void {
+    this.sidebarService.toggle();
+  }
 
   private readonly svgIcons: Record<string, string> = {
     dashboard: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>`,
@@ -226,7 +243,22 @@ export class SidebarComponent implements OnInit {
     { label: 'Users', route: '/users', icon: this.svgIcons['users'] },
   ];
 
-  constructor(private auth: AuthService, private router: Router) { }
+  private safeIconsCache = new Map<string, SafeHtml>();
+
+  constructor(
+    private auth: AuthService,
+    private router: Router,
+    private sidebarService: SidebarService,
+    private sanitizer: DomSanitizer
+  ) { }
+
+  getSafeIcon(svgString: string): SafeHtml {
+    if (!svgString) return '';
+    if (!this.safeIconsCache.has(svgString)) {
+      this.safeIconsCache.set(svgString, this.sanitizer.bypassSecurityTrustHtml(svgString));
+    }
+    return this.safeIconsCache.get(svgString)!;
+  }
 
   ngOnInit(): void {
     this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe((e: any) => {

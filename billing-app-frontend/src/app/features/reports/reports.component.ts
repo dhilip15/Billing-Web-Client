@@ -169,18 +169,18 @@ export class ReportsComponent implements OnInit {
         datasets: [{
           label: 'Revenue (₹)',
           data: this.salesReport.items.map(i => i.revenue),
-          backgroundColor: 'rgba(99, 102, 241, 0.7)',
-          borderColor: '#6366f1',
+          backgroundColor: 'rgba(65, 220, 142, 0.75)',
+          borderColor: '#41dc8e',
           borderWidth: 1,
           borderRadius: 6,
         }]
       },
       options: {
         responsive: true,
-        plugins: { legend: { labels: { color: '#94a3b8' } } },
+        plugins: { legend: { labels: { color: '#374151' } } },
         scales: {
-          x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.1)' } },
-          y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.1)' } }
+          x: { ticks: { color: '#374151' }, grid: { color: 'rgba(209,231,221,0.5)' } },
+          y: { ticks: { color: '#374151' }, grid: { color: 'rgba(209,231,221,0.5)' } }
         }
       }
     });

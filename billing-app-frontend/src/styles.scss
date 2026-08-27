@@ -6,44 +6,44 @@
   --sidebar-collapsed-width: 72px;
   --header-height: 64px;
 
-  // Primary palette
-  --color-primary: #6366f1;
-  --color-primary-light: #818cf8;
-  --color-primary-dark: #4f46e5;
-  --color-primary-bg: rgba(99, 102, 241, 0.1);
+  // Primary palette (#41dc8e green theme)
+  --color-primary: #41dc8e;
+  --color-primary-light: #15803d;
+  --color-primary-dark: #23a863;
+  --color-primary-bg: rgba(65, 220, 142, 0.14);
 
   // Accent
-  --color-accent: #14b8a6;
-  --color-accent-light: #2dd4bf;
-  --color-accent-bg: rgba(20, 184, 166, 0.1);
+  --color-accent: #10b981;
+  --color-accent-light: #059669;
+  --color-accent-bg: rgba(16, 185, 129, 0.12);
 
   // Status colors
-  --color-success: #22c55e;
-  --color-warning: #f59e0b;
-  --color-error: #ef4444;
-  --color-info: #3b82f6;
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-error: #dc2626;
+  --color-info: #0284c7;
 
-  // Neutral palette
-  --color-bg: #0f172a;
-  --color-bg-secondary: #1e293b;
-  --color-bg-card: #1e293b;
-  --color-bg-elevated: #263451;
-  --color-sidebar: #0d1526;
-  --color-sidebar-hover: rgba(99, 102, 241, 0.12);
-  --color-sidebar-active: rgba(99, 102, 241, 0.18);
+  // Neutral Green & White Light Palette
+  --color-bg: #f3f8f5;
+  --color-bg-secondary: #ffffff;
+  --color-bg-card: #ffffff;
+  --color-bg-elevated: #eaf4ee;
+  --color-sidebar: #091f14;
+  --color-sidebar-hover: rgba(65, 220, 142, 0.12);
+  --color-sidebar-active: rgba(65, 220, 142, 0.22);
 
-  --color-text: #f1f5f9;
-  --color-text-secondary: #94a3b8;
-  --color-text-muted: #64748b;
-  --color-border: rgba(148, 163, 184, 0.1);
-  --color-border-light: rgba(148, 163, 184, 0.06);
+  --color-text: #111827;
+  --color-text-secondary: #374151;
+  --color-text-muted: #6b7280;
+  --color-border: #d1e7dd;
+  --color-border-light: #e6f4ec;
 
   // Shadows
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
-  --shadow-md: 0 4px 6px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.2);
-  --shadow-lg: 0 10px 15px rgba(0,0,0,0.3), 0 4px 6px rgba(0,0,0,0.2);
-  --shadow-xl: 0 20px 25px rgba(0,0,0,0.35), 0 10px 10px rgba(0,0,0,0.2);
-  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.25);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(65, 220, 142, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(65, 220, 142, 0.08);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(65, 220, 142, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(65, 220, 142, 0.1);
+  --shadow-glow: 0 0 16px rgba(65, 220, 142, 0.45);
 
   // Radius
   --radius-sm: 6px;

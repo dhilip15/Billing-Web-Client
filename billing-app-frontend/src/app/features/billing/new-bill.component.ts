@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -52,8 +52,8 @@ interface CartItem {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
               </svg>
-              <input class="form-control" type="text" placeholder="Search products by name or SKU..."
-                     [(ngModel)]="productSearch" (input)="filterProducts()"/>
+              <input #searchInput class="form-control" type="text" placeholder="Scan barcode or search by name / SKU..."
+                     [(ngModel)]="productSearch" (input)="filterProducts()" (keydown.enter)="onSearchEnter($event)"/>
             </div>
             <div class="product-grid mt-4" *ngIf="filteredProducts.length > 0">
               <button *ngFor="let p of filteredProducts.slice(0, 12)"
@@ -245,7 +245,8 @@ interface CartItem {
     .pos-actions { display: flex; flex-direction: column; gap: 10px; }
   `]
 })
-export class NewBillComponent implements OnInit {
+export class NewBillComponent implements OnInit, AfterViewInit {
+  @ViewChild('searchInput') searchInput!: ElementRef<HTMLInputElement>;
   products: ProductDto[] = [];
   filteredProducts: ProductDto[] = [];
   customers: CustomerDto[] = [];
@@ -311,11 +312,58 @@ export class NewBillComponent implements OnInit {
     });
   }
 
+  ngAfterViewInit(): void {
+    setTimeout(() => {
+      this.searchInput?.nativeElement?.focus();
+    }, 300);
+  }
+
   filterProducts(): void {
-    const q = this.productSearch.toLowerCase();
+    const q = this.productSearch.toLowerCase().trim();
     this.filteredProducts = q
-      ? this.products.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q))
+      ? this.products.filter(p =>
+          (p.name && p.name.toLowerCase().includes(q)) ||
+          (p.sku && p.sku.toLowerCase().includes(q)) ||
+          (p.barcode && p.barcode.toLowerCase().includes(q))
+        )
       : this.products;
+  }
+
+  onSearchEnter(event: Event): void {
+    event.preventDefault();
+    const q = this.productSearch.trim().toLowerCase();
+    if (!q) return;
+
+    // 1. Try exact barcode match
+    let matched = this.products.find(p => p.barcode && p.barcode.trim().toLowerCase() === q);
+
+    // 2. Try exact SKU match
+    if (!matched) {
+      matched = this.products.find(p => p.sku && p.sku.trim().toLowerCase() === q);
+    }
+
+    // 3. Try exact Name match or single filtered item
+    if (!matched) {
+      matched = this.products.find(p => p.name && p.name.trim().toLowerCase() === q);
+    }
+
+    if (!matched && this.filteredProducts.length === 1) {
+      matched = this.filteredProducts[0];
+    }
+
+    if (matched) {
+      if (matched.currentStock <= 0 && !matched.allowNegativeStock) {
+        this.toast.error(`"${matched.name}" is out of stock!`);
+      } else {
+        this.addToCart(matched);
+        this.toast.success(`Added "${matched.name}" to cart`);
+      }
+      this.productSearch = '';
+      this.filterProducts();
+      this.searchInput?.nativeElement?.focus();
+    } else {
+      this.toast.error(`No product found for barcode/query: "${this.productSearch}"`);
+    }
   }
 
   addToCart(product: ProductDto): void {
