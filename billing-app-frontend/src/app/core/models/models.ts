@@ -221,8 +221,7 @@ export interface BillDto {
   status: BillStatus;
   notes?: string;
   cancellationReason?: string;
-  financialYear?: string;
-  createdByName?: string;
+  createdBy?: string;
   billItems: BillItemDto[];
   items?: BillItemDto[];
   payments: BillPaymentDto[];
@@ -234,6 +233,7 @@ export interface BillListDto {
   billDate: string;
   customerName?: string;
   totalAmount: number;
+  taxAmount?: number;
   paidAmount: number;
   balanceDue: number;
   status: BillStatus;
@@ -273,25 +273,25 @@ export interface PurchaseItemDto {
 
 export interface PurchaseDto {
   id: number;
+  purchaseNo: string;
+  purchaseDate: string;
   supplierId?: number;
   supplierName?: string;
-  purchaseDate: string;
-  invoiceNo?: string;
   totalAmount: number;
-  notes?: string;
-  createdByName?: string;
-  items?: PurchaseItemDto[];
+  invoiceReference?: string;
 }
 
 export interface CreatePurchaseItemRequest {
   productId: number;
   quantity: number;
-  unitCost: number;
+  unitPrice: number;
+  taxPercent?: number;
 }
 
 export interface CreatePurchaseRequest {
   supplierId?: number;
-  invoiceNo?: string;
+  purchaseDate: string;
+  invoiceReference?: string;
   notes?: string;
   items: CreatePurchaseItemRequest[];
 }
@@ -299,15 +299,14 @@ export interface CreatePurchaseRequest {
 // ─── Stock Ledger ─────────────────────────────────────────────────────────────
 export interface StockLedgerDto {
   id: number;
-  productId: number;
-  productName: string;
-  transactionType: TransactionType;
+  transactionType: string | TransactionType; // Allow string from backend
   quantity: number;
   balanceAfter: number;
   referenceId?: number;
+  referenceType?: string;
   notes?: string;
-  createdAt: string;
-  createdByName?: string;
+  transactionDate: string;
+  createdBy?: string;
 }
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────

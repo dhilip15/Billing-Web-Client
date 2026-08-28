@@ -87,7 +87,7 @@ interface CartItem {
                 </div>
                 <div class="cart-controls">
                   <button class="qty-btn" (click)="decreaseQty(i)">−</button>
-                  <input type="number" class="qty-input" [(ngModel)]="item.quantity" min="1" (change)="calcTotals()"/>
+                  <input type="number" class="qty-input" [(ngModel)]="item.quantity" min="0.001" step="any" (change)="calcTotals()"/>
                   <button class="qty-btn" (click)="increaseQty(i)">+</button>
                 </div>
                 <div class="cart-total font-semibold">₹{{ getItemTotal(item) | number:'1.2-2' }}</div>

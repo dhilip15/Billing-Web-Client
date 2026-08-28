@@ -21,4 +21,12 @@ export class PurchaseService {
   create(req: CreatePurchaseRequest): Observable<ApiResponse<PurchaseDto>> {
     return this.http.post<ApiResponse<PurchaseDto>>(this.baseUrl, req);
   }
+
+  update(id: number, req: CreatePurchaseRequest): Observable<ApiResponse<PurchaseDto>> {
+    return this.http.put<ApiResponse<PurchaseDto>>(`${this.baseUrl}/${id}`, req);
+  }
+
+  delete(id: number): Observable<ApiResponse<void>> {
+    return this.http.delete<ApiResponse<void>>(`${this.baseUrl}/${id}`);
+  }
 }

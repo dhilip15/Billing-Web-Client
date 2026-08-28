@@ -38,8 +38,7 @@ import { FormsModule } from '@angular/forms';
           <div class="info-grid">
             <div class="info-row"><span>Invoice #</span><strong>{{ bill.invoiceNo }}</strong></div>
             <div class="info-row"><span>Date</span><strong>{{ bill.billDate | date:'dd MMM yyyy, h:mm a' }}</strong></div>
-            <div class="info-row"><span>Financial Year</span><strong>{{ bill.financialYear }}</strong></div>
-            <div class="info-row"><span>Created By</span><strong>{{ bill.createdByName }}</strong></div>
+            <div class="info-row"><span>Created By</span><strong>{{ bill.createdBy }}</strong></div>
           </div>
         </div>
 
@@ -93,7 +92,7 @@ import { FormsModule } from '@angular/forms';
         <div class="card">
           <h3 class="mb-4">Payments</h3>
           <div *ngFor="let pmt of (bill.payments || [])" class="info-row">
-            <span>{{ getPaymentMode(pmt.mode) }}</span>
+            <span>{{ pmt.mode }}</span>
             <strong class="text-success">₹{{ pmt.amount | number:'1.2-2' }}</strong>
           </div>
           <div class="info-row" *ngIf="!bill.payments || bill.payments.length === 0"><p class="text-muted">No payments recorded</p></div>
@@ -185,7 +184,7 @@ import { FormsModule } from '@angular/forms';
       <!-- Footer -->
       <div class="rpt-footer-row">
         <span>Total Items {{ ($any(bill).billItems || $any(bill).items || []).length }}</span>
-        <span>{{ bill.createdByName || 'Admin' }}</span>
+        <span>{{ bill.createdBy || 'Admin' }}</span>
       </div>
       <div class="rpt-savings" *ngIf="bill.discountAmount > 0">
         Today Savings Rs. {{ bill.discountAmount | number:'1.2-2' }}

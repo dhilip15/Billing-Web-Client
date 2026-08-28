@@ -23,15 +23,19 @@ import { Router } from '@angular/router';
       <div class="card" style="padding:0">
         <div class="table-wrapper">
           <table class="table" *ngIf="purchases.length > 0; else empty">
-            <thead><tr><th>Date</th><th>Supplier</th><th>Invoice</th><th>Items</th><th>Total</th><th>Created By</th></tr></thead>
+            <thead><tr><th>Date</th><th>Supplier</th><th>Invoice</th><th>Total</th><th class="text-right">Actions</th></tr></thead>
             <tbody>
               <tr *ngFor="let p of purchases">
-                <td class="text-sm text-muted">{{ p.purchaseDate | date:'dd MMM yyyy' }}</td>
+                <td class="text-sm text-muted">{{ (!p.purchaseDate || p.purchaseDate.startsWith('0001')) ? '—' : (p.purchaseDate | date:'dd MMM yyyy') }}</td>
                 <td class="font-semibold">{{ p.supplierName || '—' }}</td>
-                <td class="text-muted text-sm">{{ p.invoiceNo || '—' }}</td>
-                <td class="text-muted text-sm">{{ p.items?.length ?? 0 }}</td>
+                <td class="text-muted text-sm">{{ p.invoiceReference || '—' }}</td>
                 <td class="font-semibold text-success">₹{{ p.totalAmount | number:'1.2-2' }}</td>
-                <td class="text-muted text-sm">{{ p.createdByName }}</td>
+                <td class="text-right">
+                  <div class="flex items-center justify-end" style="gap: 4px;">
+                    <button class="btn btn-ghost btn-sm text-primary font-medium" (click)="editPurchase(p)">Edit</button>
+                    <button class="btn btn-sm" style="background-color: #fee2e2; color: #dc2626; border: none; font-weight: 500;" (click)="deletePurchase(p)">Del</button>
+                  </div>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -43,7 +47,7 @@ import { Router } from '@angular/router';
     <!-- New Purchase Modal -->
     <div class="modal-overlay" *ngIf="showModal" (click)="showModal = false">
       <div class="modal" (click)="$event.stopPropagation()" style="width:min(680px,calc(100vw - 40px))">
-        <div class="modal-header"><h3>New Purchase</h3><button class="btn btn-ghost btn-icon" (click)="showModal = false">✕</button></div>
+        <div class="modal-header"><h3>{{ editingId ? 'Edit' : 'New' }} Purchase</h3><button class="btn btn-ghost btn-icon" (click)="showModal = false">✕</button></div>
         <div class="form-grid cols-2">
           <div class="form-group"><label>Supplier</label>
             <select class="form-control" [(ngModel)]="form.supplierId">
@@ -54,7 +58,8 @@ import { Router } from '@angular/router';
               No suppliers added yet. You can add them in the Suppliers menu.
             </small>
           </div>
-          <div class="form-group"><label>Invoice No</label><input class="form-control" [(ngModel)]="form.invoiceNo" placeholder="Optional"/></div>
+          <div class="form-group"><label>Date</label><input type="date" class="form-control" [(ngModel)]="form.purchaseDate"/></div>
+          <div class="form-group"><label>Invoice Ref</label><input class="form-control" [(ngModel)]="form.invoiceReference" placeholder="Optional"/></div>
           <div class="form-group" style="grid-column:1/-1"><label>Notes</label><textarea class="form-control" rows="2" [(ngModel)]="form.notes"></textarea></div>
         </div>
 
@@ -70,13 +75,13 @@ import { Router } from '@angular/router';
             <option *ngFor="let p of products" [ngValue]="p.id">{{ p.name }} ({{ p.sku }})</option>
           </select>
           <div class="form-group" style="flex:1;margin:0"><input class="form-control" type="number" [(ngModel)]="item.quantity" placeholder="Qty" min="1"/></div>
-          <div class="form-group" style="flex:1;margin:0"><input class="form-control" type="number" [(ngModel)]="item.unitCost" placeholder="Cost"/></div>
+          <div class="form-group" style="flex:1;margin:0"><input class="form-control" type="number" [(ngModel)]="item.unitPrice" placeholder="Cost"/></div>
           <button class="btn btn-danger btn-icon btn-sm" (click)="removeItem(i)">✕</button>
         </div>
 
         <div class="modal-footer">
           <button class="btn btn-ghost" (click)="showModal = false">Cancel</button>
-          <button class="btn btn-primary" (click)="save()" [disabled]="saving"><span *ngIf="saving" class="spinner"></span>Record Purchase</button>
+          <button class="btn btn-primary" (click)="save()" [disabled]="saving"><span *ngIf="saving" class="spinner"></span>{{ editingId ? 'Update' : 'Record' }} Purchase</button>
         </div>
       </div>
     </div>
@@ -89,7 +94,8 @@ export class PurchaseListComponent implements OnInit {
   products: ProductDto[] = [];
   showModal = false;
   saving = false;
-  form: CreatePurchaseRequest & { items: any[] } = { supplierId: undefined, invoiceNo: '', notes: '', items: [] };
+  editingId: number | null = null;
+  form: CreatePurchaseRequest & { items: any[] } = { supplierId: undefined, purchaseDate: new Date().toISOString().substring(0, 10), invoiceReference: '', notes: '', items: [] };
 
   constructor(
     private purchaseService: PurchaseService,
@@ -157,14 +163,15 @@ export class PurchaseListComponent implements OnInit {
   }
 
   openModal(): void {
-    this.form = { supplierId: undefined, invoiceNo: '', notes: '', items: [] };
+    this.editingId = null;
+    this.form = { supplierId: undefined, purchaseDate: new Date().toISOString().substring(0, 10), invoiceReference: '', notes: '', items: [] };
     this.loadSuppliers();
     this.loadProducts();
     this.showModal = true;
   }
 
   addItem(): void {
-    this.form.items.push({ productId: null, quantity: 1, unitCost: 0 });
+    this.form.items.push({ productId: null, quantity: 1, unitPrice: 0 });
   }
 
   removeItem(i: number): void {
@@ -185,32 +192,86 @@ export class PurchaseListComponent implements OnInit {
 
     const payload: CreatePurchaseRequest = {
       supplierId: this.form.supplierId ? Number(this.form.supplierId) : undefined,
-      invoiceNo: this.form.invoiceNo?.trim() || undefined,
+      purchaseDate: this.form.purchaseDate || new Date().toISOString().substring(0, 10),
+      invoiceReference: this.form.invoiceReference?.trim() || undefined,
       notes: this.form.notes?.trim() || undefined,
       items: this.form.items.map(item => ({
         productId: Number(item.productId),
         quantity: Number(item.quantity) || 1,
-        unitCost: Number(item.unitCost) || 0
+        unitPrice: Number(item.unitPrice) || 0,
+        taxPercent: 0
       }))
     };
 
     this.saving = true;
-    this.purchaseService.create(payload).subscribe({
-      next: r => {
-        if (r.success) {
-          this.toast.success('Purchase recorded, stock updated!');
+    const requestPayload = this.editingId 
+      ? this.purchaseService.update(this.editingId, payload) 
+      : this.purchaseService.create(payload);
+
+    requestPayload.subscribe({
+      next: (r: any) => {
+        // Assume success if no success flag exists but no error thrown
+        if (r.success !== false) {
+          this.toast.success(`Purchase ${this.editingId ? 'updated' : 'recorded'} successfully!`);
           this.showModal = false;
           this.loadPurchases();
         } else {
-          this.toast.error(r.message || 'Failed to record purchase');
+          this.toast.error(r.message || `Failed to ${this.editingId ? 'update' : 'record'} purchase`);
         }
         this.saving = false;
       },
       error: (err) => {
-        console.error('Purchase creation error:', err);
-        this.toast.error('Failed to record purchase');
+        console.error('Purchase save error:', err);
+        this.toast.error(`Failed to ${this.editingId ? 'update' : 'record'} purchase`);
         this.saving = false;
       }
     });
   }
+
+  editPurchase(p: PurchaseDto): void {
+    this.editingId = p.id;
+    this.purchaseService.getById(p.id).subscribe({
+      next: (r: any) => {
+        const data = r.data || r;
+        
+        // Fix for timezone issue: Get today's local date string for fallback
+        const today = new Date();
+        const localToday = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().substring(0, 10);
+        
+        this.form = {
+          supplierId: data.supplierId,
+          purchaseDate: data.purchaseDate ? data.purchaseDate.substring(0, 10) : localToday,
+          invoiceReference: data.invoiceReference || '',
+          notes: data.notes || '',
+          items: data.items ? data.items.map((i: any) => ({
+            productId: i.productId,
+            quantity: i.quantity,
+            unitPrice: i.unitCost || i.unitPrice || 0,
+            taxPercent: 0
+          })) : []
+        };
+        this.loadSuppliers();
+        this.loadProducts();
+        this.showModal = true;
+      },
+      error: () => this.toast.error('Failed to load purchase details')
+    });
+  }
+
+  deletePurchase(purchase: PurchaseDto): void {
+    if (confirm('Are you sure you want to delete this purchase? This may affect stock ledgers.')) {
+      this.purchaseService.delete(purchase.id).subscribe({
+        next: (r: any) => {
+          if (r?.success !== false) {
+            this.toast.success('Purchase deleted successfully');
+            this.loadPurchases();
+          } else {
+            this.toast.error(r?.message || 'Failed to delete purchase');
+          }
+        },
+        error: () => this.toast.error('Failed to delete purchase')
+      });
+    }
+  }
 }
+
