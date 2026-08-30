@@ -2,6 +2,7 @@
   "name": "billing-app",
   "version": "1.0.0",
   "scripts": {
+    "postinstall": "npm --prefix billing-app-frontend install",
     "start": "npm --prefix billing-app-frontend start",
     "build": "npm --prefix billing-app-frontend run build"
   }
