@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "postinstall": "npm --prefix billing-app-frontend install",
-    "start": "npm --prefix billing-app-frontend start",
+    "start": "npx serve -s billing-app-frontend/dist/billing-app-frontend",
     "build": "npm --prefix billing-app-frontend run build"
   }
 }
