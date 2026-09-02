@@ -57,6 +57,7 @@ import { ToastService } from '../../core/services/toast.service';
                 <th>Total</th>
                 <th>Tax</th>
                 <th>Paid</th>
+                <th>Balance Amt
                 <th>Status</th>
                 <th></th>
               </tr>
@@ -70,13 +71,19 @@ import { ToastService } from '../../core/services/toast.service';
                 <td class="font-semibold">₹{{ bill.totalAmount | number:'1.2-2' }}</td>
                 <td class="text-warning">₹{{ (bill.taxAmount || 0) | number:'1.2-2' }}</td>
                 <td class="text-success">₹{{ bill.paidAmount | number:'1.2-2' }}</td>
+                <td class="text-warning">₹{{ bill.balanceDue | number:'1.2-2' }}</td>
                 <td><app-status-badge [status]="bill.status"></app-status-badge></td>
                 <td>
                   <div class="row-actions">
                     <a [routerLink]="['/billing', bill.id]" class="btn btn-ghost btn-icon btn-sm" title="View">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     </a>
-                    <button *ngIf="bill.status === BillStatus.Draft" class="btn btn-accent btn-icon btn-sm" (click)="finalize(bill.id)" title="Finalize">
+                    <a *ngIf="isRecallable(bill.status)"
+                       [routerLink]="['/billing/new']" [queryParams]="{ recallId: bill.id }"
+                       class="btn btn-secondary btn-icon btn-sm" title="Recall to POS">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    </a>
+                    <button *ngIf="isDraft(bill.status)" class="btn btn-accent btn-icon btn-sm" (click)="finalize(bill.id)" title="Finalize">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
                     </button>
                   </div>
@@ -132,6 +139,16 @@ export class BillListComponent implements OnInit {
   constructor(private billingService: BillingService, private toast: ToastService) { }
 
   ngOnInit(): void { this.load(); }
+
+  isRecallable(status: any): boolean {
+    const s = String(status).toLowerCase();
+    return s === '1' || s === '2' || s === 'draft' || s === 'onhold';
+  }
+
+  isDraft(status: any): boolean {
+    const s = String(status).toLowerCase();
+    return s === '1' || s === 'draft';
+  }
 
   load(): void {
     this.loading = true;

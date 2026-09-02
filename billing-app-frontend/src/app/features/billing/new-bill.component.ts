@@ -1,7 +1,7 @@
 import { Component, OnInit, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ProductService } from '../../core/services/product.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { BillingService } from '../../core/services/billing.service';
@@ -38,11 +38,14 @@ interface CartItem {
           <!-- Customer selector -->
           <div class="card mb-4">
             <div class="form-group">
-              <label>Customer (optional)</label>
-              <select class="form-control" [(ngModel)]="selectedCustomerId">
-                <option [ngValue]="null">Walk-in Customer</option>
-                <option *ngFor="let c of customers" [ngValue]="c.id">{{ c.name }} ({{ c.phone }})</option>
-              </select>
+              <label>Customer Mobile No. (optional)</label>
+              <div class="flex gap-2">
+                <input class="form-control" type="text" placeholder="Enter 10-digit mobile..."
+                       [(ngModel)]="customerPhone" (ngModelChange)="onPhoneChange()"/>
+              </div>
+              <div class="text-sm mt-1" [ngClass]="selectedCustomerId ? 'text-success' : 'text-muted'">
+                {{ selectedCustomerId ? '✓ Linked: ' + customerName : (customerPhone ? 'New customer will be created' : 'Walk-in Customer') }}
+              </div>
             </div>
           </div>
 
@@ -251,7 +254,10 @@ export class NewBillComponent implements OnInit, AfterViewInit {
   filteredProducts: ProductDto[] = [];
   customers: CustomerDto[] = [];
   productSearch = '';
+  customerPhone = '';
+  customerName = '';
   selectedCustomerId: number | null = null;
+  recalledBillId: number | null = null;
   notes = '';
   cart: any[] = [];
   payments: { mode: PaymentMode; amount: number }[] = [];
@@ -267,6 +273,7 @@ export class NewBillComponent implements OnInit, AfterViewInit {
     private productService: ProductService,
     private customerService: CustomerService,
     private billingService: BillingService,
+    private route: ActivatedRoute,
     private router: Router,
     private toast: ToastService
   ) {}
@@ -307,9 +314,111 @@ export class NewBillComponent implements OnInit, AfterViewInit {
         } else {
           this.customers = [];
         }
+
+        // Check if recalling an existing bill
+        const recallIdParam = this.route.snapshot.queryParamMap.get('recallId');
+        if (recallIdParam) {
+          this.loadRecalledBill(Number(recallIdParam));
+        }
       },
       error: (err) => console.error('Error loading customers for billing:', err)
     });
+  }
+
+  loadRecalledBill(id: number): void {
+    this.recalledBillId = id;
+    this.billingService.getById(id).subscribe({
+      next: (r: any) => {
+        const bill = r?.data || r?.Data || r;
+        if (bill) {
+          if (bill.customerId) {
+            this.selectedCustomerId = bill.customerId;
+            this.customerName = bill.customerName || '';
+            const matched = this.customers.find(c => c.id === bill.customerId);
+            if (matched && matched.phone) {
+              this.customerPhone = matched.phone;
+            }
+          }
+          if (bill.notes) this.notes = bill.notes;
+
+          const items = bill.billItems || bill.items || [];
+          this.cart = items.map((i: any) => ({
+            productId: i.productId,
+            name: i.productName || i.name,
+            sku: i.sku || '',
+            unit: i.unit || '',
+            quantity: i.quantity,
+            unitPrice: i.unitPrice,
+            taxPercent: i.taxPercent,
+            discount: i.discountAmount || i.discount || 0
+          }));
+
+          if (bill.payments && bill.payments.length > 0) {
+            this.payments = bill.payments.map((p: any) => ({
+              mode: typeof p.mode === 'string' ? (PaymentMode as any)[p.mode] || PaymentMode.Cash : p.mode,
+              amount: p.amount
+            }));
+          }
+
+          this.calcTotals();
+          this.toast.info(`Recalled bill #${bill.invoiceNo || id} to POS cart.`);
+        }
+      },
+      error: (err) => {
+        console.error('Error recalling bill:', err);
+        this.toast.error('Failed to recall bill');
+      }
+    });
+  }
+
+  onPhoneChange(): void {
+    const phone = this.customerPhone?.trim();
+    if (!phone) {
+      this.selectedCustomerId = null;
+      this.customerName = '';
+      return;
+    }
+    
+    const matched = this.customers.find(c => c.phone === phone);
+    if (matched) {
+      this.selectedCustomerId = matched.id;
+      this.customerName = matched.name;
+    } else {
+      this.selectedCustomerId = null;
+      this.customerName = '';
+    }
+  }
+
+  ensureCustomerAndExecute(action: () => void): void {
+    if (this.cart.length === 0) {
+      this.toast.error('Cart is empty');
+      return;
+    }
+
+    const phone = this.customerPhone?.trim();
+    if (phone && !this.selectedCustomerId) {
+      this.saving = 'creating_customer';
+      this.customerService.create({ name: 'Customer - ' + phone, phone: phone }).subscribe({
+        next: (res: any) => {
+          const custData = res?.data || res?.Data || res;
+          if (custData && custData.id) {
+            this.selectedCustomerId = custData.id;
+            this.customers.push(custData); // optionally add to local list
+            action();
+          } else {
+            this.toast.error('Failed to auto-create customer record');
+            this.saving = false;
+          }
+        },
+        error: (err) => {
+          console.error('Error creating customer:', err);
+          this.toast.error('Failed to auto-create customer');
+          this.saving = false;
+        }
+      });
+    } else {
+      action();
+    }
   }
 
   ngAfterViewInit(): void {
@@ -436,84 +545,99 @@ export class NewBillComponent implements OnInit, AfterViewInit {
   }
 
   saveDraft(): void {
-    if (this.cart.length === 0) {
-      this.toast.error('Cart is empty');
-      return;
-    }
-    this.saving = 'draft';
-    this.billingService.create(this.buildRequest()).subscribe({
-      next: res => {
-        if (res.success) {
-          this.toast.success('Bill saved as draft!');
-          this.router.navigate(['/billing']);
-        } else {
-          this.toast.error(res.message || 'Failed to save bill');
+    this.ensureCustomerAndExecute(() => {
+      this.saving = 'draft';
+      this.billingService.create(this.buildRequest()).subscribe({
+        next: res => {
+          if (res.success) {
+            this.toast.success('Bill saved as draft!');
+            this.router.navigate(['/billing']);
+          } else {
+            this.toast.error(res.message || 'Failed to save bill');
+          }
+          this.saving = false;
+        },
+        error: (err) => {
+          console.error('Error saving draft:', err);
+          this.toast.error('Failed to save bill draft');
+          this.saving = false;
         }
-        this.saving = false;
-      },
-      error: (err) => {
-        console.error('Error saving draft:', err);
-        this.toast.error('Failed to save bill draft');
-        this.saving = false;
-      }
+      });
     });
   }
 
   holdBill(): void {
-    if (this.cart.length === 0) {
-      this.toast.error('Cart is empty');
-      return;
-    }
-    this.saving = 'hold';
-    this.billingService.create(this.buildRequest()).subscribe({
-      next: res => {
-        const billData = res?.data || (res as any)?.Data;
-        if (res.success && billData) {
-          this.billingService.hold(billData.id).subscribe({
-            next: () => {
-              this.toast.info('Bill placed on hold.');
-              this.router.navigate(['/billing']);
-            },
-            error: () => { this.saving = false; }
-          });
-        } else {
-          this.toast.error(res.message || 'Failed to create bill');
+    this.ensureCustomerAndExecute(() => {
+      this.saving = 'hold';
+      this.billingService.create(this.buildRequest()).subscribe({
+        next: res => {
+          const billData = res?.data || (res as any)?.Data;
+          if (res.success && billData) {
+            this.billingService.hold(billData.id).subscribe({
+              next: () => {
+                this.toast.info('Bill placed on hold.');
+                this.router.navigate(['/billing']);
+              },
+              error: () => { this.saving = false; }
+            });
+          } else {
+            this.toast.error(res.message || 'Failed to create bill');
+            this.saving = false;
+          }
+        },
+        error: (err) => {
+          console.error('Error holding bill:', err);
+          this.toast.error('Failed to place bill on hold');
           this.saving = false;
         }
-      },
-      error: (err) => {
-        console.error('Error holding bill:', err);
-        this.toast.error('Failed to place bill on hold');
-        this.saving = false;
-      }
+      });
     });
   }
 
   finalizeBill(): void {
-    if (this.cart.length === 0) {
-      this.toast.error('Cart is empty');
-      return;
-    }
     if (this.payments.length === 0) {
       this.payments.push({ mode: PaymentMode.Cash, amount: this.totalAmount });
       this.calcTotals();
     }
-    this.saving = 'finalize';
-    this.billingService.create(this.buildRequest()).subscribe({
-      next: res => {
-        const billData = res?.data || (res as any)?.Data;
-        if (res.success && billData) {
-          this.toast.success('Bill created and finalized!');
-          this.router.navigate(['/billing', billData.id], { queryParams: { print: 'true' } });
-        } else {
-          this.toast.error(res.message || 'Failed to finalize bill');
-          this.saving = false;
-        }
-      },
-      error: (err) => {
-        console.error('Error finalizing bill:', err);
-        this.toast.error('Failed to finalize bill');
-        this.saving = false;
+    
+    this.ensureCustomerAndExecute(() => {
+      this.saving = 'finalize';
+      if (this.recalledBillId) {
+        this.billingService.finalize(this.recalledBillId).subscribe({
+          next: res => {
+            const billData = res?.data || (res as any)?.Data;
+            if (res.success && billData) {
+              this.toast.success('Bill finalized!');
+              this.router.navigate(['/billing', billData.id], { queryParams: { print: 'true' } });
+            } else {
+              this.toast.error(res.message || 'Failed to finalize bill');
+              this.saving = false;
+            }
+          },
+          error: (err) => {
+            console.error('Error finalizing bill:', err);
+            this.toast.error('Failed to finalize bill');
+            this.saving = false;
+          }
+        });
+      } else {
+        this.billingService.create(this.buildRequest()).subscribe({
+          next: res => {
+            const billData = res?.data || (res as any)?.Data;
+            if (res.success && billData) {
+              this.toast.success('Bill created and finalized!');
+              this.router.navigate(['/billing', billData.id], { queryParams: { print: 'true' } });
+            } else {
+              this.toast.error(res.message || 'Failed to finalize bill');
+              this.saving = false;
+            }
+          },
+          error: (err) => {
+            console.error('Error finalizing bill:', err);
+            this.toast.error('Failed to finalize bill');
+            this.saving = false;
+          }
+        });
       }
     });
   }

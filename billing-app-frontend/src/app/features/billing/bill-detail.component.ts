@@ -22,6 +22,7 @@ import { FormsModule } from '@angular/forms';
           <app-status-badge [status]="bill.status"></app-status-badge>
         </div>
         <div class="page-actions">
+          <a *ngIf="isRecallable(bill.status)" [routerLink]="['/billing/new']" [queryParams]="{ recallId: bill.id }" class="btn btn-secondary">🛒 Recall to POS</a>
           <button *ngIf="bill.status === BillStatus.Draft" class="btn btn-accent" (click)="finalize()">Finalize</button>
           <button *ngIf="bill.status === BillStatus.Draft" class="btn btn-secondary" (click)="hold()">Hold</button>
           <button *ngIf="bill.status !== BillStatus.Paid && bill.status !== BillStatus.Cancelled && bill.status !== BillStatus.Returned"
@@ -368,6 +369,11 @@ export class BillDetailComponent implements OnInit {
       },
       error: (err) => console.error('Error fetching bill detail:', err)
     });
+  }
+
+  isRecallable(status: any): boolean {
+    const s = String(status).toLowerCase();
+    return s === '1' || s === '2' || s === 'draft' || s === 'onhold';
   }
 
   printBill(): void {
