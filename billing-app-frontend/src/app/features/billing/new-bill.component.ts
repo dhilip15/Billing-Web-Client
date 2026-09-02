@@ -394,15 +394,20 @@ export class NewBillComponent implements OnInit, AfterViewInit {
   getItemTotal(item: any): number {
     const qty = Number(item.quantity) || 0;
     const price = Number(item.unitPrice) || 0;
-    const tax = Number(item.taxPercent) || 0;
     const disc = Number(item.discount) || 0;
-    return qty * price * (1 + tax / 100) - disc;
+    return (qty * price) - disc;
   }
 
   calcTotals(): void {
-    this.subTotal = this.cart.reduce((s: number, i: any) => s + (Number(i.quantity) || 0) * (Number(i.unitPrice) || 0), 0);
-    this.taxAmount = this.cart.reduce((s: number, i: any) => s + (Number(i.quantity) || 0) * (Number(i.unitPrice) || 0) * ((Number(i.taxPercent) || 0) / 100), 0);
-    this.totalAmount = this.subTotal + this.taxAmount;
+    // Total should not add tax if unitPrice is already MRP
+    this.totalAmount = this.cart.reduce((s: number, i: any) => s + ((Number(i.quantity) || 0) * (Number(i.unitPrice) || 0) - (Number(i.discount) || 0)), 0);
+    
+    // Tax amount calculated directly on the MRP as per user expectation
+    this.taxAmount = this.cart.reduce((s: number, i: any) => s + ((Number(i.quantity) || 0) * (Number(i.unitPrice) || 0) * ((Number(i.taxPercent) || 0) / 100)), 0);
+    
+    // Subtotal is Total minus Tax to balance the bill mathematically
+    this.subTotal = this.totalAmount - this.taxAmount;
+    
     this.paidAmount = this.payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
     this.balanceDue = Math.max(0, this.totalAmount - this.paidAmount);
   }
@@ -499,7 +504,7 @@ export class NewBillComponent implements OnInit, AfterViewInit {
         const billData = res?.data || (res as any)?.Data;
         if (res.success && billData) {
           this.toast.success('Bill created and finalized!');
-          this.router.navigate(['/billing']);
+          this.router.navigate(['/billing', billData.id], { queryParams: { print: 'true' } });
         } else {
           this.toast.error(res.message || 'Failed to finalize bill');
           this.saving = false;

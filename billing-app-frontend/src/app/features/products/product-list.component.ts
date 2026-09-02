@@ -112,13 +112,15 @@ import { ToastService } from '../../core/services/toast.service';
           </div>
           <div class="form-group"><label>Purchase Price (₹) *</label><input class="form-control" type="number" [(ngModel)]="form.purchasePrice"/></div>
           <div class="form-group"><label>Selling Price (₹) *</label><input class="form-control" type="number" [(ngModel)]="form.sellingPrice"/></div>
+            <div class="form-group"><label>MRP</label><input class="form-control" type="number" [(ngModel)]="form.mrp"/></div>
           <div class="form-group"><label>GST %</label><input class="form-control" type="number" [(ngModel)]="form.taxPercent"/></div>
           <div class="form-group"><label>Reorder Level</label><input class="form-control" type="number" [(ngModel)]="form.reorderLevel"/></div>
-          <div class="form-group" style="grid-column: 1 / -1;"><label>Description</label><textarea class="form-control" rows="2" [(ngModel)]="form.description"></textarea></div>
           <div class="form-group flex items-center gap-2">
-            <input type="checkbox" id="neg" [(ngModel)]="form.allowNegativeStock"/>
-            <label for="neg" style="margin:0">Allow negative stock</label>
+            <label for="neg" style="margin-top: 35px;">
+              <input type="checkbox" id="neg" [(ngModel)]="form.allowNegativeStock"/>
+              Allow negative stock</label>
           </div>
+          <div class="form-group" style="grid-column: 1 / -1;"><label>Description</label><textarea class="form-control" rows="2" [(ngModel)]="form.description"></textarea></div>
         </div>
         <div class="modal-footer">
           <button class="btn btn-ghost" (click)="showModal = false">Cancel</button>
@@ -278,6 +280,7 @@ export class ProductListComponent implements OnInit {
       sellingPrice: Number(this.form.sellingPrice) || 0,
       taxPercent: Number(this.form.taxPercent) || 0,
       reorderLevel: Number(this.form.reorderLevel) || 0,
+      mrp: Number(this.form.mrp) || 0,
       description: this.form.description?.toString().trim() || undefined,
       allowNegativeStock: !!this.form.allowNegativeStock
     };

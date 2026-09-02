@@ -240,7 +240,7 @@ export class SidebarComponent implements OnInit {
     { label: 'Purchases', route: '/purchases', icon: this.svgIcons['purchases'], roles: ['Admin', 'Manager'] },
     { label: 'Stock Ledger', route: '/stock-ledger', icon: this.svgIcons['stock'] },
     { label: 'Reports', route: '/reports', icon: this.svgIcons['reports'], roles: ['Admin', 'Manager'] },
-    { label: 'Users', route: '/users', icon: this.svgIcons['users'] },
+    { label: 'Users', route: '/users', icon: this.svgIcons['users'], roles: ['Admin'] },
   ];
 
   private safeIconsCache = new Map<string, SafeHtml>();

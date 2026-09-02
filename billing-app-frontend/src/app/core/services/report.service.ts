@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { ApiResponse, SalesReportDto, SalesReportRequest, StockLedgerDto, StockReportItemDto } from '../models/models';
+import { ApiResponse, SalesReportDto, SalesReportRequest, StockLedgerDto, StockReportItemDto, GstReportItemDto } from '../models/models';
 
 @Injectable({ providedIn: 'root' })
 export class StockLedgerService {
@@ -25,6 +25,10 @@ export class ReportService {
 
   getSalesReport(req: SalesReportRequest): Observable<ApiResponse<SalesReportDto>> {
     return this.http.post<ApiResponse<SalesReportDto>>(`${this.baseUrl}/sales`, req);
+  }
+
+  getGstReport(filter: { from: string, to: string }): Observable<ApiResponse<GstReportItemDto[]>> {
+    return this.http.post<ApiResponse<GstReportItemDto[]>>(`${this.baseUrl}/gst-sales`, filter);
   }
 
   getStockReport(): Observable<ApiResponse<StockReportItemDto[]>> {

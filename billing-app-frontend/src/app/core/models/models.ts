@@ -144,6 +144,7 @@ export interface ProductDto {
   unit: string;
   purchasePrice: number;
   sellingPrice: number;
+  mrp: number;
   taxPercent: number;
   currentStock: number;
   reorderLevel: number;
@@ -162,6 +163,7 @@ export interface CreateProductRequest {
   unit: string;
   purchasePrice: number;
   sellingPrice: number;
+  mrp?: number;
   taxPercent: number;
   reorderLevel: number;
   supplierId?: number;
@@ -178,6 +180,7 @@ export interface UpdateProductRequest {
   unit: string;
   purchasePrice: number;
   sellingPrice: number;
+  mrp?: number;
   taxPercent: number;
   reorderLevel: number;
   supplierId?: number;
@@ -312,7 +315,7 @@ export interface StockLedgerDto {
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 export interface DashboardDto {
   todaySales: number;
-  todayBillCount: number;
+  todayBills: number;
   totalCustomers: number;
   totalProducts: number;
   lowStockCount: number;
@@ -335,7 +338,7 @@ export interface SalesReportDto {
   totalDiscount: number;
   totalBills: number;
   paidBills: number;
-  items: SalesReportItemDto[];
+  dailyBreakdown: any[];
 }
 
 export interface SalesReportItemDto {
@@ -369,4 +372,15 @@ export interface PagedResult<T> {
   page: number;
   pageSize: number;
   totalPages: number;
+}
+
+export interface GstReportItemDto {
+  invoiceNo: string;
+  billDate: string;
+  customerName: string;
+  gstin: string;
+  taxableValue: number;
+  cgst: number;
+  sgst: number;
+  totalValue: number;
 }

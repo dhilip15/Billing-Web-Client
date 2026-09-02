@@ -116,80 +116,90 @@ import { FormsModule } from '@angular/forms';
       </div>
     </div>
 
-    <!-- ══════════════════════════════════════════════════
-         THERMAL RECEIPT — shown only during window.print()
-         ══════════════════════════════════════════════════ -->
+    <!-- THERMAL RECEIPT (Shown only during print) -->
     <div class="receipt-print" *ngIf="bill" id="thermal-receipt">
 
       <!-- Store Header -->
-      <div class="rpt-store-name">SRI TAMIL DEPARTMENT STORE</div>
-      <div class="rpt-store-addr">OMPARTRIKOVIL STREET NEAR BUS STAND,</div>
-      <div class="rpt-store-addr">NAMBYUR - 638 458</div>
-      <div class="rpt-store-phone">96777 03783, 84899 99869</div>
-      <div class="rpt-separator">- - - - - - - - - - - - - - - - - - - -</div>
+      <div class="rpt-store-name">TAMIL DEPARTMENT STORES</div>
+      <div class="rpt-store-addr">PULIAMPATTI ROAD,</div>
+      <div class="rpt-store-addr">NAMBIYUR-638 458.</div>
+      <div class="rpt-store-phone">Ph: 9994996392, 9095190828</div>
+      <div class="rpt-store-phone">GST No: 33APTPA5132P2ZL</div>
+      <div class="rpt-separator"></div>
       <div class="rpt-title">CASH BILL</div>
-      <div class="rpt-separator">- - - - - - - - - - - - - - - - - - - -</div>
+      <div class="rpt-separator"></div>
 
       <!-- Bill meta -->
       <div class="rpt-meta-row">
-        <span>To: {{ bill.customerName || 'Walk-in' }}</span>
+        <div>Bill No : {{ bill.invoiceNo }}</div>
+        <div>User Name : {{ bill.createdBy || 'Walk-in' }}</div>
+        <div>Bill Date : {{ bill.billDate | date:'dd-MM-yyyy hh:mm a' }}</div>
+        <div>To : {{ bill.customerName || 'Walk-in' }}</div>
       </div>
-      <div class="rpt-meta-right">
-        <div>B.No : {{ bill.invoiceNo }}</div>
-        <div>Date : {{ bill.billDate | date:'dd-MM-yyyy' }}</div>
-        <div>Time : {{ bill.billDate | date:'hh:mm a' }}</div>
-      </div>
-      <div class="rpt-separator">- - - - - - - - - - - - - - - - - - - -</div>
+      <div class="rpt-separator"></div>
 
       <!-- Column Headers -->
       <div class="rpt-col-header">
-        <span class="col-desc">DESCRIPTION</span>
-        <span class="col-qty">QTY</span>
-        <span class="col-mrp">MRP</span>
-        <span class="col-rate">RATE</span>
-        <span class="col-amt">AMT</span>
+        <span class="col-desc">Description</span>
+        <span class="col-rate">Rate</span>
+        <span class="col-qty">Qty</span>
+        <span class="col-amt">Amount</span>
       </div>
-      <div class="rpt-separator">- - - - - - - - - - - - - - - - - - - -</div>
+      <div class="rpt-separator"></div>
 
       <!-- Items -->
       <div class="rpt-item-row" *ngFor="let item of ($any(bill).billItems || $any(bill).items || [])">
         <span class="col-desc">{{ item.productName }}</span>
-        <span class="col-qty">{{ item.quantity }}</span>
-        <span class="col-mrp">{{ item.unitPrice | number:'1.2-2' }}</span>
         <span class="col-rate">{{ item.unitPrice | number:'1.2-2' }}</span>
+        <span class="col-qty">{{ item.quantity }}</span>
         <span class="col-amt">{{ calcItemTotal(item) | number:'1.2-2' }}</span>
       </div>
 
-      <div class="rpt-separator">- - - - - - - - - - - - - - - - - - - -</div>
+      <div class="rpt-separator"></div>
 
       <!-- Totals -->
       <div class="rpt-total-row">
-        <span>GrossAmount</span>
-        <span>{{ bill.subTotal | number:'1.2-2' }}</span>
+        <span>Total Items : {{ ($any(bill).billItems || $any(bill).items || []).length }}</span>
+        <span class="totals-right">
+            <div style="display: flex; justify-content: space-between; gap: 20px;">
+                <span>Total Amt :</span><span>{{ bill.subTotal + bill.taxAmount | number:'1.2-2' }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; gap: 20px;" *ngIf="getRoundedOff() !== 0">
+                <span>Round off :</span><span>{{ getRoundedOff() | number:'1.2-2' }}</span>
+            </div>
+        </span>
       </div>
-      <div class="rpt-tax-breakdown" *ngFor="let tax of getTaxBreakdown()">
-        <span>( TAX{{ tax.percent }}% &nbsp; {{ tax.amount | number:'1.2-2' }} )</span>
-      </div>
-      <div class="rpt-total-row" *ngIf="getRoundedOff() !== 0">
-        <span>Rounded Off</span>
-        <span>{{ getRoundedOff() | number:'1.2-2' }}</span>
-      </div>
-      <div class="rpt-separator">- - - - - - - - - - - - - - - - - - - -</div>
+      <div class="rpt-separator"></div>
       <div class="rpt-net-amount">
-        <span>NET AMOUNT</span>
+        <span>Net Amount</span>
         <span>{{ bill.totalAmount | number:'1.2-2' }}</span>
       </div>
-      <div class="rpt-separator">- - - - - - - - - - - - - - - - - - - -</div>
-
-      <!-- Footer -->
-      <div class="rpt-footer-row">
-        <span>Total Items {{ ($any(bill).billItems || $any(bill).items || []).length }}</span>
-        <span>{{ bill.createdBy || 'Admin' }}</span>
+      <div class="rpt-separator"></div>
+      <div class="rpt-meta-row">
+        <div style="display: flex; justify-content: space-between;"><span>Total MRP : </span><span>{{ getTotalMRP() | number:'1.2-2' }}</span></div>
+        <div style="display: flex; justify-content: space-between;"><span>Total Rate : </span><span>{{ getTotalRate() | number:'1.2-2' }}</span></div>
+        <div class="rpt-savings" *ngIf="getTotalMRP() > getTotalRate()">
+        ** YOU SAVED Rs. {{ (getTotalMRP() - getTotalRate()) | number:'1.2-2' }} **
+        </div>
       </div>
-      <div class="rpt-savings" *ngIf="bill.discountAmount > 0">
-        Today Savings Rs. {{ bill.discountAmount | number:'1.2-2' }}
+      <div class="rpt-separator"></div>
+      
+      <!-- Tax Table -->
+      <div class="rpt-col-header">
+        <span style="flex:1">GST%</span>
+        <span style="flex:1; text-align:right">Value</span>
+        <span style="flex:1; text-align:right">SGST</span>
+        <span style="flex:1; text-align:right">CGST</span>
       </div>
-      <div class="rpt-thankyou">Thank You! Visit Again</div>
+      <div class="rpt-separator"></div>
+      <div class="rpt-item-row" *ngFor="let tax of getTaxBreakdownList()">
+        <span style="flex:1">{{ tax.percent }}</span>
+        <span style="flex:1; text-align:right">{{ tax.value | number:'1.2-2' }}</span>
+        <span style="flex:1; text-align:right">{{ tax.sgst | number:'1.2-2' }}</span>
+        <span style="flex:1; text-align:right">{{ tax.cgst | number:'1.2-2' }}</span>
+      </div>
+      <div class="rpt-separator"></div>
+      <div class="rpt-thankyou">Thank You! Visit Again!!</div>
     </div>
 
     <!-- Cancel Modal -->
@@ -197,7 +207,7 @@ import { FormsModule } from '@angular/forms';
       <div class="modal" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <h3>Cancel Bill</h3>
-          <button class="btn btn-ghost btn-icon" (click)="showCancelModal = false">✕</button>
+          <button class="btn btn-ghost btn-icon" (click)="showCancelModal = false">X</button>
         </div>
         <div class="form-group">
           <label>Reason for cancellation</label>
@@ -217,123 +227,116 @@ import { FormsModule } from '@angular/forms';
     .info-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--color-border-light); font-size: 0.875rem; color: var(--color-text-secondary); &:last-child { border-bottom: none; } strong { color: var(--color-text); } }
     .print-btn { background: linear-gradient(135deg, #10b981, #059652); border-color: transparent; }
 
-    /* ══════════════════════════════════════════
-       THERMAL RECEIPT STYLES
-       Hidden on screen, visible only when printing
-       ══════════════════════════════════════════ */
+    /* THERMAL RECEIPT STYLES */
     .receipt-print {
-      display: none; /* hidden on screen */
+      display: none;
     }
 
-    /* ── Receipt content styles (used during print via global styles.scss) ── */
-    .rpt-store-name {
-      font-size: 14px;
-      font-weight: bold;
-      text-align: center;
-      letter-spacing: 1px;
-      margin-bottom: 2px;
-    }
+    @media print {
+      .page, .app-header { display: none !important; }
+      body, html { margin: 0; padding: 0; background: #fff; }
+      
+      .receipt-print {
+        display: block;
+        width: 300px;
+        margin: 0 auto;
+        font-family: 'Courier New', Courier, monospace;
+        color: #000;
+        font-size: 12px;
+        line-height: 1.4;
+      }
 
-    .rpt-store-addr {
-      font-size: 10px;
-      text-align: center;
-      margin-bottom: 1px;
-    }
+      .rpt-store-name {
+        font-size: 16px;
+        font-weight: bold;
+        text-align: center;
+        letter-spacing: 1px;
+        margin-bottom: 4px;
+      }
 
-    .rpt-store-phone {
-      font-size: 10px;
-      text-align: center;
-      margin-bottom: 2px;
-    }
+      .rpt-store-addr, .rpt-store-phone {
+        font-size: 12px;
+        text-align: center;
+        margin-bottom: 2px;
+      }
 
-    .rpt-title {
-      font-size: 12px;
-      font-weight: bold;
-      text-align: center;
-      letter-spacing: 2px;
-      margin: 2px 0;
-    }
+      .rpt-title {
+        font-size: 14px;
+        font-weight: bold;
+        text-align: center;
+        margin: 4px 0;
+      }
 
-    .rpt-separator {
-      font-size: 9px;
-      text-align: center;
-      margin: 3px 0;
-      color: #555;
-    }
+      .rpt-separator {
+        border-top: 1px dashed #000;
+        margin: 8px 0;
+      }
 
-    .rpt-meta-row {
-      font-size: 10px;
-      margin-bottom: 1px;
-    }
+      .rpt-meta-row {
+        font-size: 12px;
+        margin-bottom: 4px;
+      }
 
-    .rpt-meta-right {
-      font-size: 10px;
-      text-align: right;
-      margin-bottom: 2px;
-    }
+      .rpt-meta-row div {
+        margin-bottom: 2px;
+      }
 
-    .rpt-col-header {
-      display: flex;
-      font-size: 10px;
-      font-weight: bold;
-      margin: 2px 0;
-    }
+      .rpt-col-header {
+        display: flex;
+        font-size: 12px;
+        font-weight: bold;
+        margin: 4px 0;
+      }
 
-    .rpt-item-row {
-      display: flex;
-      font-size: 10px;
-      margin: 1px 0;
-      align-items: flex-start;
-    }
+      .rpt-item-row {
+        display: flex;
+        font-size: 12px;
+        margin: 2px 0;
+        align-items: flex-start;
+      }
 
-    .col-desc  { flex: 2; overflow: hidden; word-break: break-word; }
-    .col-qty   { width: 28px; text-align: right; flex-shrink: 0; }
-    .col-mrp   { width: 42px; text-align: right; flex-shrink: 0; }
-    .col-rate  { width: 42px; text-align: right; flex-shrink: 0; }
-    .col-amt   { width: 48px; text-align: right; flex-shrink: 0; }
+      .col-desc  { flex: 2; overflow: hidden; word-break: break-word; }
+      .col-rate  { width: 45px; text-align: right; flex-shrink: 0; }
+      .col-qty   { width: 30px; text-align: right; flex-shrink: 0; }
+      .col-amt   { width: 55px; text-align: right; flex-shrink: 0; }
 
-    .rpt-total-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 10px;
-      margin: 2px 0;
-    }
+      .rpt-total-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        margin: 4px 0;
+      }
+      
+      .totals-right {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+      }
 
-    .rpt-tax-breakdown {
-      font-size: 10px;
-      text-align: left;
-      margin: 1px 4px;
-      color: #444;
-    }
+      .rpt-net-amount {
+        display: flex;
+        justify-content: space-between;
+        font-size: 16px;
+        font-weight: bold;
+        margin: 6px 0;
+      }
 
-    .rpt-net-amount {
-      display: flex;
-      justify-content: space-between;
-      font-size: 13px;
-      font-weight: bold;
-      margin: 3px 0;
-      letter-spacing: 0.5px;
-    }
+      .rpt-savings {
+        font-size: 13px;
+        font-weight: bold;
+        text-align: center;
+        margin-top: 10px;
+        border: 1px dashed #000;
+        padding: 4px 0;
+      }
 
-    .rpt-footer-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 10px;
-      margin: 2px 0;
-    }
-
-    .rpt-savings {
-      font-size: 10px;
-      text-align: center;
-      margin: 2px 0;
-    }
-
-    .rpt-thankyou {
-      font-size: 11px;
-      font-weight: bold;
-      text-align: center;
-      margin-top: 6px;
-      letter-spacing: 1px;
+      .rpt-thankyou {
+        font-size: 14px;
+        font-weight: bold;
+        text-align: center;
+        margin-top: 10px;
+        margin-bottom: 20px;
+      }
     }
   `]
 })
@@ -352,11 +355,15 @@ export class BillDetailComponent implements OnInit {
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
+    const autoPrint = this.route.snapshot.queryParamMap.get('print') === 'true';
     this.billingService.getById(id).subscribe({
       next: (r: any) => {
         const data = r?.data || r?.Data || r;
         if (data && (data.id || data.invoiceNo)) {
           this.bill = data;
+          if (autoPrint) {
+            setTimeout(() => this.printBill(), 300);
+          }
         }
       },
       error: (err) => console.error('Error fetching bill detail:', err)
@@ -367,21 +374,37 @@ export class BillDetailComponent implements OnInit {
     window.print();
   }
 
-  /** Group tax amounts by percent */
-  getTaxBreakdown(): { percent: number; amount: number }[] {
+  getTaxBreakdownList(): any[] {
     const items = (this.bill?.billItems || (this.bill as any)?.items || []) as any[];
-    const map = new Map<number, number>();
+    const map = new Map<number, { value: number, sgst: number, cgst: number }>();
     items.forEach((item: any) => {
       const pct = Number(item.taxPercent) || 0;
       const amt = Number(item.taxAmount) || 0;
-      map.set(pct, (map.get(pct) || 0) + amt);
+      const qty = Number(item.quantity) || 0;
+      const price = Number(item.unitPrice) || 0;
+      const taxable = (qty * price) / (1 + (pct / 100));
+
+      if (!map.has(pct)) map.set(pct, { value: 0, sgst: 0, cgst: 0 });
+      const current = map.get(pct)!;
+      current.value += taxable;
+      current.sgst += (amt / 2);
+      current.cgst += (amt / 2);
     });
     return Array.from(map.entries())
-      .filter(([, amt]) => amt > 0)
-      .map(([percent, amount]) => ({ percent, amount }));
+      .filter(([, v]) => v.value > 0)
+      .map(([percent, v]) => ({ percent, value: v.value, sgst: v.sgst, cgst: v.cgst }));
   }
 
-  /** Rounded off difference */
+  getTotalMRP(): number {
+    const items = (this.bill?.billItems || (this.bill as any)?.items || []) as any[];
+    return items.reduce((sum, item) => sum + ((Number(item.mrp) || Number(item.unitPrice)) * Number(item.quantity)), 0);
+  }
+
+  getTotalRate(): number {
+    const items = (this.bill?.billItems || (this.bill as any)?.items || []) as any[];
+    return items.reduce((sum, item) => sum + (Number(item.unitPrice) * Number(item.quantity)), 0);
+  }
+
   getRoundedOff(): number {
     if (!this.bill) return 0;
     const net = this.bill.totalAmount || 0;
@@ -389,14 +412,12 @@ export class BillDetailComponent implements OnInit {
     return +(rounded - net).toFixed(2);
   }
 
-  /** Calculate item total — uses pre-computed value if available, else calculates */
   calcItemTotal(item: any): number {
     if (item.total != null && item.total !== 0) return Number(item.total);
-    const qty   = Number(item.quantity)   || 0;
-    const price = Number(item.unitPrice)  || 0;
-    const tax   = Number(item.taxPercent) || 0;
-    const disc  = Number(item.discount)   || 0;
-    return +(qty * price * (1 + tax / 100) - disc).toFixed(2);
+    const qty = Number(item.quantity) || 0;
+    const price = Number(item.unitPrice) || 0;
+    const disc = Number(item.discount) || 0;
+    return +(qty * price - disc).toFixed(2);
   }
 
   finalize(): void {
