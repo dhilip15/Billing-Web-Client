@@ -20,7 +20,7 @@ import { ToastService } from '../../core/services/toast.service';
       <div class="page-header">
         <div>
           <h1>Products</h1>
-          <p class="page-subtitle">{{ filtered.length }} of {{ products.length }} products</p>
+          <p class="page-subtitle">{{ filtered.length }} items visible (Total: {{ totalItems }})</p>
         </div>
         <button class="btn btn-primary" (click)="openModal()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -74,6 +74,13 @@ import { ToastService } from '../../core/services/toast.service';
           <h3>No products found</h3>
           <p>Add your first product to get started.</p>
         </div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination-controls" *ngIf="totalPages > 1 && !loading" style="display: flex; justify-content: center; gap: 8px; margin-top: 20px;">
+        <button class="btn btn-ghost btn-sm" [disabled]="currentPage === 1" (click)="goToPage(currentPage - 1)">Previous</button>
+        <span style="display: flex; align-items: center; font-size: 0.9rem;">Page {{currentPage}} of {{totalPages}}</span>
+        <button class="btn btn-ghost btn-sm" [disabled]="currentPage === totalPages" (click)="goToPage(currentPage + 1)">Next</button>
       </div>
 
       <!-- Loading -->
@@ -167,6 +174,11 @@ export class ProductListComponent implements OnInit {
   editId: number | null = null;
   saving = false;
   form: any = this.defaultForm();
+  
+  currentPage = 1;
+  pageSize = 20;
+  totalPages = 1;
+  totalItems = 0;
 
   constructor(
     private productService: ProductService,
@@ -191,25 +203,26 @@ export class ProductListComponent implements OnInit {
   load(): void {
     this.loading = true;
 
-    this.productService.getAll().subscribe({
+    this.productService.getAll(this.currentPage, this.pageSize).subscribe({
       next: (r: any) => {
-        if (Array.isArray(r)) {
+        const data = r?.data || r?.Data;
+        if (data && Array.isArray(data.items)) {
+          this.products = data.items;
+          this.totalItems = data.totalItems || 0;
+          this.totalPages = data.totalPages || 1;
+          this.currentPage = data.page || 1;
+        } else if (Array.isArray(r)) {
           this.products = r;
-
-        } else if (r?.data?.items && Array.isArray(r.data.items)) {
-          this.products = r.data.items;
-
-        } else if (r?.data && Array.isArray(r.data)) {
-          this.products = r.data;
-
-        } else if (r?.Data?.items && Array.isArray(r.Data.items)) {
-          this.products = r.Data.items;
-
-        } else if (r?.Data && Array.isArray(r.Data)) {
-          this.products = r.Data;
-
+          this.totalItems = r.length;
+          this.totalPages = 1;
+        } else if (data && Array.isArray(data)) {
+          this.products = data;
+          this.totalItems = data.length;
+          this.totalPages = 1;
         } else {
           this.products = [];
+          this.totalItems = 0;
+          this.totalPages = 1;
         }
         this.filter();
         this.loading = false;
@@ -222,6 +235,13 @@ export class ProductListComponent implements OnInit {
         this.loading = false;
       }
     });
+  }
+
+  goToPage(page: number): void {
+    if (page >= 1 && page <= this.totalPages) {
+      this.currentPage = page;
+      this.load();
+    }
   }
 
   filter(): void {

@@ -9,8 +9,8 @@ export class ProductService {
   private readonly baseUrl = `${environment.apiUrl}/products`;
   constructor(private http: HttpClient) {}
 
-  getAll(): Observable<ApiResponse<ProductDto[]>> {
-    return this.http.get<ApiResponse<ProductDto[]>>(this.baseUrl);
+  getAll(page: number = 1, pageSize: number = 20): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}?page=${page}&pageSize=${pageSize}`);
   }
 
   getById(id: number): Observable<ApiResponse<ProductDto>> {
