@@ -4,9 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ProductService } from '../../core/services/product.service';
 import { CustomerService } from '../../core/services/customer.service';
+import { CategoryService } from '../../core/services/category.service';
 import { BillingService } from '../../core/services/billing.service';
 import {
-  ProductDto, CustomerDto, CreateBillRequest, PaymentMode
+  ProductDto, CustomerDto, CategoryDto, CreateBillRequest, PaymentMode
 } from '../../core/models/models';
 import { HeaderComponent } from '../../shared/components/header/header.component';
 import { ToastService } from '../../core/services/toast.service';
@@ -49,17 +50,24 @@ interface CartItem {
             </div>
           </div>
 
-          <!-- Product search -->
+          <!-- Product search & Category filter -->
           <div class="card mb-4">
-            <div class="search-bar">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              </svg>
-              <input #searchInput class="form-control" type="text" placeholder="Scan barcode or search by name / SKU..."
-                     [(ngModel)]="productSearch" (input)="filterProducts()" (keydown.enter)="onSearchEnter($event)"/>
+            <div class="flex gap-3 items-center flex-wrap">
+              <div class="search-bar" style="flex: 1; min-width: 200px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input #searchInput class="form-control" type="text" placeholder="Scan barcode or search by name / SKU..."
+                       [(ngModel)]="productSearch" (input)="filterProducts()" (keydown.enter)="onSearchEnter($event)"/>
+              </div>
+              <select class="form-control" style="width: 170px;" [(ngModel)]="selectedCategoryId" (change)="filterProducts()">
+                <option [value]="0">All Categories</option>
+                <option *ngFor="let c of categories" [value]="c.id">{{ c.name }}</option>
+              </select>
             </div>
-            <div class="product-grid mt-4" *ngIf="filteredProducts.length > 0">
-              <button *ngFor="let p of filteredProducts.slice(0, 12)"
+
+            <div class="product-grid mt-4" *ngIf="paginatedProducts.length > 0">
+              <button *ngFor="let p of paginatedProducts"
                       class="product-chip" (click)="addToCart(p)"
                       [disabled]="p.currentStock <= 0 && !p.allowNegativeStock">
                 <div class="chip-name">{{ p.name }}</div>
@@ -73,6 +81,25 @@ interface CartItem {
             </div>
             <div *ngIf="products.length === 0" class="text-muted text-sm mt-3">
               No products found in catalogue. Please add products first.
+            </div>
+            <div *ngIf="products.length > 0 && filteredProducts.length === 0" class="text-muted text-sm mt-3 text-center py-2">
+              No products match the selected search/category.
+            </div>
+
+            <!-- Pagination controls -->
+            <div class="flex items-center justify-between mt-4 pt-3" style="border-top: 1px solid var(--color-border-light);" *ngIf="filteredProducts.length > 0">
+              <span class="text-xs text-muted">
+                Showing {{ (posPage - 1) * posPageSize + 1 }} - {{ minProductIndex }} of {{ filteredProducts.length }} items
+              </span>
+              <div class="flex items-center gap-2">
+                <button class="btn btn-ghost btn-sm" (click)="goToPosPage(posPage - 1)" [disabled]="posPage <= 1">
+                  Previous
+                </button>
+                <span class="text-xs font-semibold px-2">Page {{ posPage }} of {{ posTotalPages }}</span>
+                <button class="btn btn-ghost btn-sm" (click)="goToPosPage(posPage + 1)" [disabled]="posPage >= posTotalPages">
+                  Next
+                </button>
+              </div>
             </div>
           </div>
 
@@ -252,6 +279,10 @@ export class NewBillComponent implements OnInit, AfterViewInit {
   @ViewChild('searchInput') searchInput!: ElementRef<HTMLInputElement>;
   products: ProductDto[] = [];
   filteredProducts: ProductDto[] = [];
+  categories: CategoryDto[] = [];
+  selectedCategoryId: number = 0;
+  posPage = 1;
+  posPageSize = 12;
   customers: CustomerDto[] = [];
   productSearch = '';
   customerPhone = '';
@@ -271,6 +302,7 @@ export class NewBillComponent implements OnInit, AfterViewInit {
 
   constructor(
     private productService: ProductService,
+    private categoryService: CategoryService,
     private customerService: CustomerService,
     private billingService: BillingService,
     private route: ActivatedRoute,
@@ -279,7 +311,17 @@ export class NewBillComponent implements OnInit, AfterViewInit {
   ) {}
 
   ngOnInit(): void {
-    this.productService.getAll().subscribe({
+    this.categoryService.getAll().subscribe({
+      next: (r: any) => {
+        const data = r?.data || r?.Data || r;
+        if (Array.isArray(data)) {
+          this.categories = data;
+        }
+      },
+      error: (err) => console.error('Error loading categories for billing:', err)
+    });
+
+    this.productService.getAll(1, 1000).subscribe({
       next: (r: any) => {
         if (Array.isArray(r)) {
           this.products = r;
@@ -294,7 +336,7 @@ export class NewBillComponent implements OnInit, AfterViewInit {
         } else {
           this.products = [];
         }
-        this.filteredProducts = this.products;
+        this.filterProducts();
       },
       error: (err) => console.error('Error loading products for billing:', err)
     });
@@ -427,15 +469,41 @@ export class NewBillComponent implements OnInit, AfterViewInit {
     }, 300);
   }
 
+  get posTotalPages(): number {
+    return Math.ceil((this.filteredProducts?.length || 0) / this.posPageSize) || 1;
+  }
+
+  get paginatedProducts(): ProductDto[] {
+    const start = (this.posPage - 1) * this.posPageSize;
+    return (this.filteredProducts || []).slice(start, start + this.posPageSize);
+  }
+
+  get minProductIndex(): number {
+    return Math.min(this.posPage * this.posPageSize, this.filteredProducts?.length || 0);
+  }
+
+  goToPosPage(page: number): void {
+    if (page >= 1 && page <= this.posTotalPages) {
+      this.posPage = page;
+    }
+  }
+
   filterProducts(): void {
+    this.posPage = 1;
+    let list = this.products || [];
+    if (this.selectedCategoryId && Number(this.selectedCategoryId) !== 0) {
+      const catId = Number(this.selectedCategoryId);
+      list = list.filter(p => p.categoryId === catId);
+    }
     const q = this.productSearch.toLowerCase().trim();
-    this.filteredProducts = q
-      ? this.products.filter(p =>
-          (p.name && p.name.toLowerCase().includes(q)) ||
-          (p.sku && p.sku.toLowerCase().includes(q)) ||
-          (p.barcode && p.barcode.toLowerCase().includes(q))
-        )
-      : this.products;
+    if (q) {
+      list = list.filter(p =>
+        (p.name && p.name.toLowerCase().includes(q)) ||
+        (p.sku && p.sku.toLowerCase().includes(q)) ||
+        (p.barcode && p.barcode.toLowerCase().includes(q))
+      );
+    }
+    this.filteredProducts = list;
   }
 
   onSearchEnter(event: Event): void {

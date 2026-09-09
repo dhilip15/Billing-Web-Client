@@ -6,6 +6,7 @@ import { BillDto, BillStatus } from '../../core/models/models';
 import { HeaderComponent } from '../../shared/components/header/header.component';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
 import { ToastService } from '../../core/services/toast.service';
+import { SettingsService } from '../../core/services/settings.service';
 import { FormsModule } from '@angular/forms';
 
 @Component({
@@ -121,11 +122,11 @@ import { FormsModule } from '@angular/forms';
     <div class="receipt-print" *ngIf="bill" id="thermal-receipt">
 
       <!-- Store Header -->
-      <div class="rpt-store-name">TAMIL DEPARTMENT STORES</div>
-      <div class="rpt-store-addr">PULIAMPATTI ROAD,</div>
-      <div class="rpt-store-addr">NAMBIYUR-638 458.</div>
-      <div class="rpt-store-phone">Ph: 9994996392, 9095190828</div>
-      <div class="rpt-store-phone">GST No: 33APTPA5132P2ZL</div>
+      <div class="rpt-store-name">{{ settingsService.storeName }}</div>
+      <div class="rpt-store-addr" *ngIf="settingsService.settings?.address" style="white-space: pre-line;">{{ settingsService.settings?.address }}</div>
+      <div class="rpt-store-phone" *ngIf="settingsService.settings?.phone">Ph: {{ settingsService.settings?.phone }}</div>
+      <div class="rpt-store-phone" *ngIf="settingsService.settings?.email">Email: {{ settingsService.settings?.email }}</div>
+      <div class="rpt-store-phone" *ngIf="settingsService.settings?.gstNumber">GST No: {{ settingsService.settings?.gstNumber }}</div>
       <div class="rpt-separator"></div>
       <div class="rpt-title">CASH BILL</div>
       <div class="rpt-separator"></div>
@@ -234,80 +235,86 @@ import { FormsModule } from '@angular/forms';
     }
 
     @media print {
-      .page, .app-header { display: none !important; }
-      body, html { margin: 0; padding: 0; background: #fff; }
-      
+      @page {
+        size: 80mm auto;
+        margin: 0mm;
+      }
+
+      .page, .app-header, nav, header, sidebar { display: none !important; }
+      body, html { margin: 0; padding: 0; background: #fff; width: 80mm; -webkit-print-color-adjust: exact; }
+
       .receipt-print {
-        display: block;
-        width: 300px;
+        display: block !important;
+        width: 76mm;
+        max-width: 76mm;
         margin: 0 auto;
+        padding: 4mm 1mm 20mm 1mm;
         font-family: 'Courier New', Courier, monospace;
         color: #000;
-        font-size: 12px;
-        line-height: 1.4;
+        font-size: 11.5px;
+        line-height: 1.35;
+        box-sizing: border-box;
       }
 
       .rpt-store-name {
         font-size: 16px;
         font-weight: bold;
         text-align: center;
-        letter-spacing: 1px;
-        margin-bottom: 4px;
+        letter-spacing: 0.5px;
+        margin-bottom: 2px;
+        text-transform: uppercase;
       }
 
       .rpt-store-addr, .rpt-store-phone {
-        font-size: 12px;
+        font-size: 11px;
         text-align: center;
-        margin-bottom: 2px;
+        margin-bottom: 1px;
       }
 
       .rpt-title {
-        font-size: 14px;
+        font-size: 13px;
         font-weight: bold;
         text-align: center;
-        margin: 4px 0;
+        margin: 3px 0;
+        letter-spacing: 1px;
       }
 
       .rpt-separator {
         border-top: 1px dashed #000;
-        margin: 8px 0;
+        margin: 5px 0;
       }
 
       .rpt-meta-row {
-        font-size: 12px;
-        margin-bottom: 4px;
-      }
-
-      .rpt-meta-row div {
-        margin-bottom: 2px;
+        font-size: 11px;
+        line-height: 1.3;
       }
 
       .rpt-col-header {
         display: flex;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: bold;
-        margin: 4px 0;
+        margin: 3px 0;
       }
 
       .rpt-item-row {
         display: flex;
-        font-size: 12px;
+        font-size: 11px;
         margin: 2px 0;
         align-items: flex-start;
       }
 
-      .col-desc  { flex: 2; overflow: hidden; word-break: break-word; }
-      .col-rate  { width: 45px; text-align: right; flex-shrink: 0; }
-      .col-qty   { width: 30px; text-align: right; flex-shrink: 0; }
-      .col-amt   { width: 55px; text-align: right; flex-shrink: 0; }
+      .col-desc  { flex: 1; min-width: 0; padding-right: 4px; overflow: hidden; word-break: break-word; }
+      .col-rate  { width: 52px; text-align: right; flex-shrink: 0; }
+      .col-qty   { width: 34px; text-align: right; flex-shrink: 0; }
+      .col-amt   { width: 62px; text-align: right; flex-shrink: 0; }
 
       .rpt-total-row {
         display: flex;
         justify-content: space-between;
-        font-size: 12px;
-        margin: 4px 0;
+        font-size: 11px;
+        margin: 3px 0;
       }
-      
+
       .totals-right {
         display: flex;
         flex-direction: column;
@@ -317,26 +324,26 @@ import { FormsModule } from '@angular/forms';
       .rpt-net-amount {
         display: flex;
         justify-content: space-between;
-        font-size: 16px;
+        font-size: 15px;
         font-weight: bold;
-        margin: 6px 0;
+        margin: 5px 0;
       }
 
       .rpt-savings {
-        font-size: 13px;
+        font-size: 12px;
         font-weight: bold;
         text-align: center;
-        margin-top: 10px;
+        margin-top: 6px;
         border: 1px dashed #000;
         padding: 4px 0;
       }
 
       .rpt-thankyou {
-        font-size: 14px;
+        font-size: 13px;
         font-weight: bold;
         text-align: center;
         margin-top: 10px;
-        margin-bottom: 20px;
+        padding-bottom: 25mm;
       }
     }
   `]
@@ -351,10 +358,12 @@ export class BillDetailComponent implements OnInit {
     private route: ActivatedRoute,
     private billingService: BillingService,
     private toast: ToastService,
-    private router: Router
+    private router: Router,
+    public settingsService: SettingsService
   ) { }
 
   ngOnInit(): void {
+    this.settingsService.load().subscribe();
     const id = Number(this.route.snapshot.paramMap.get('id'));
     const autoPrint = this.route.snapshot.queryParamMap.get('print') === 'true';
     this.billingService.getById(id).subscribe({

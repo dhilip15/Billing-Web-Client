@@ -9,8 +9,11 @@ export class ProductService {
   private readonly baseUrl = `${environment.apiUrl}/products`;
   constructor(private http: HttpClient) {}
 
-  getAll(page: number = 1, pageSize: number = 20): Observable<any> {
-    return this.http.get<any>(`${this.baseUrl}?page=${page}&pageSize=${pageSize}`);
+  getAll(page: number = 1, pageSize: number = 20, search?: string, categoryId?: number): Observable<any> {
+    let url = `${this.baseUrl}?page=${page}&pageSize=${pageSize}`;
+    if (search && search.trim()) url += `&search=${encodeURIComponent(search.trim())}`;
+    if (categoryId) url += `&categoryId=${categoryId}`;
+    return this.http.get<any>(url);
   }
 
   getById(id: number): Observable<ApiResponse<ProductDto>> {

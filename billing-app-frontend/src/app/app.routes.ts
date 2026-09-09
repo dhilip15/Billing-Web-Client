@@ -21,18 +21,9 @@ export const routes: Routes = [
       {
         path: 'billing',
         children: [
-          {
-            path: '',
-            loadComponent: () => import('./features/billing/bill-list.component').then(m => m.BillListComponent)
-          },
-          {
-            path: 'new',
-            loadComponent: () => import('./features/billing/new-bill.component').then(m => m.NewBillComponent)
-          },
-          {
-            path: ':id',
-            loadComponent: () => import('./features/billing/bill-detail.component').then(m => m.BillDetailComponent)
-          }
+          { path: '', loadComponent: () => import('./features/billing/bill-list.component').then(m => m.BillListComponent) },
+          { path: 'new', loadComponent: () => import('./features/billing/new-bill.component').then(m => m.NewBillComponent) },
+          { path: ':id', loadComponent: () => import('./features/billing/bill-detail.component').then(m => m.BillDetailComponent) }
         ]
       },
       {
@@ -70,6 +61,11 @@ export const routes: Routes = [
       {
         path: 'users',
         loadComponent: () => import('./features/users/user-list.component').then(m => m.UserListComponent)
+      },
+      {
+        path: 'settings',
+        canActivate: [roleGuard(['Admin'])],
+        loadComponent: () => import('./features/settings/settings.component').then(m => m.SettingsComponent)
       }
     ]
   },
