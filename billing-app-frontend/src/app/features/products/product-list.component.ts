@@ -9,6 +9,7 @@ import { ProductDto, CategoryDto, SupplierDto, CreateProductRequest } from '../.
 import { HeaderComponent } from '../../shared/components/header/header.component';
 import { ToastService } from '../../core/services/toast.service';
 import { SettingsService } from '../../core/services/settings.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-product-list',
@@ -362,7 +363,7 @@ export class ProductListComponent implements OnInit {
   }
 
   private async doPrintBarcode(p: ProductDto): Promise<void> {
-    const apiUrl = 'http://localhost:5284/api/products/barcode-image/' + encodeURIComponent(p.barcode!);
+    const apiUrl = `${environment.apiUrl}/products/barcode-image/${encodeURIComponent(p.barcode!)}`;
     let imgSrc = '';
     try {
       const res = await fetch(apiUrl);
