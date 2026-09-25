@@ -180,7 +180,7 @@ import { FormsModule } from '@angular/forms';
         <div style="display: flex; justify-content: space-between;"><span>Total MRP : </span><span>{{ getTotalMRP() | number:'1.2-2' }}</span></div>
         <div style="display: flex; justify-content: space-between;"><span>Total Rate : </span><span>{{ getTotalRate() | number:'1.2-2' }}</span></div>
         <div class="rpt-savings" *ngIf="getTotalMRP() > getTotalRate()">
-        ** YOU SAVED Rs. {{ (getTotalMRP() - getTotalRate()) | number:'1.2-2' }} **
+        ** Today's Saving Rs. {{ (getTotalMRP() - getTotalRate()) | number:'1.2-2' }} **
         </div>
       </div>
       <div class="rpt-separator"></div>
@@ -244,6 +244,7 @@ import { FormsModule } from '@angular/forms';
         font-family: 'Courier New', Courier, monospace;
         color: #000;
         font-size: 12px;
+        font-weight: 700;
         line-height: 1.4;
       }
 

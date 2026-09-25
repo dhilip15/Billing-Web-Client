@@ -442,7 +442,7 @@ export class ReportsComponent implements OnInit {
           td { padding: 10px; border-bottom: 1px solid #e5e7eb; }
           tfoot tr { background-color: #f9fafb; font-weight: bold; }
           tfoot td { border-top: 2px solid #10b981; font-size: 14px; }
-          @media print { body { padding: 0; } }
+          @media print { body { padding: 0; font-weight: 600; } }
         </style>
       </head>
       <body>
