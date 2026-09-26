@@ -8,6 +8,8 @@ import { SupplierService } from '../../core/services/supplier.service';
 import { ProductDto, CategoryDto, SupplierDto, CreateProductRequest } from '../../core/models/models';
 import { HeaderComponent } from '../../shared/components/header/header.component';
 import { ToastService } from '../../core/services/toast.service';
+import { SettingsService } from '../../core/services/settings.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-product-list',
@@ -20,7 +22,7 @@ import { ToastService } from '../../core/services/toast.service';
       <div class="page-header">
         <div>
           <h1>Products</h1>
-          <p class="page-subtitle">{{ filtered.length }} of {{ products.length }} products</p>
+          <p class="page-subtitle">{{ filtered.length }} items visible (Total: {{ totalItems }})</p>
         </div>
         <button class="btn btn-primary" (click)="openModal()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -32,9 +34,9 @@ import { ToastService } from '../../core/services/toast.service';
       <div class="filters-row">
         <div class="search-bar" style="flex:1; max-width: 320px">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input class="form-control" type="text" placeholder="Search by name or SKU..." [(ngModel)]="search" (input)="filter()"/>
+          <input class="form-control" type="text" placeholder="Search by name or SKU..." [(ngModel)]="search" (input)="onFilterChange()"/>
         </div>
-        <select class="form-control" style="width:180px" [(ngModel)]="catFilter" (change)="filter()">
+        <select class="form-control" style="width:180px" [(ngModel)]="catFilter" (change)="onFilterChange()">
           <option value="">All Categories</option>
           <option *ngFor="let c of categories" [value]="c.id">{{ c.name }}</option>
         </select>
@@ -55,8 +57,8 @@ import { ToastService } from '../../core/services/toast.service';
           <h4 class="pc-name">{{ p.name }}</h4>
           <div class="pc-sku text-xs text-muted">SKU: {{ p.sku }}</div>
           <div class="pc-prices">
-            <div><div class="text-xs text-muted">Buy</div><div class="font-semibold">₹{{ p.purchasePrice }}</div></div>
-            <div><div class="text-xs text-muted">Sell</div><div class="font-semibold text-primary">₹{{ p.sellingPrice }}</div></div>
+            <div><div class="text-xs text-muted">Buy</div><div class="font-semibold">&#8377;{{ p.purchasePrice }}</div></div>
+            <div><div class="text-xs text-muted">Sell</div><div class="font-semibold text-primary">&#8377;{{ p.sellingPrice }}</div></div>
             <div><div class="text-xs text-muted">GST</div><div class="font-semibold">{{ p.taxPercent }}%</div></div>
           </div>
           <div class="stock-bar-bg">
@@ -64,6 +66,7 @@ import { ToastService } from '../../core/services/toast.service';
           </div>
           <div class="pc-actions">
             <button class="btn btn-ghost btn-sm" (click)="openModal(p)">Edit</button>
+            <button class="btn btn-ghost btn-sm" (click)="printBarcode(p)">Print Barcode</button>
             <button class="btn btn-danger btn-sm" (click)="deleteProduct(p.id)">Delete</button>
           </div>
         </div>
@@ -74,6 +77,13 @@ import { ToastService } from '../../core/services/toast.service';
           <h3>No products found</h3>
           <p>Add your first product to get started.</p>
         </div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination-controls" *ngIf="totalPages > 1 && !loading" style="display: flex; justify-content: center; gap: 8px; margin-top: 20px;">
+        <button class="btn btn-ghost btn-sm" [disabled]="currentPage === 1" (click)="goToPage(currentPage - 1)">Previous</button>
+        <span style="display: flex; align-items: center; font-size: 0.9rem;">Page {{currentPage}} of {{totalPages}}</span>
+        <button class="btn btn-ghost btn-sm" [disabled]="currentPage === totalPages" (click)="goToPage(currentPage + 1)">Next</button>
       </div>
 
       <!-- Loading -->
@@ -91,7 +101,7 @@ import { ToastService } from '../../core/services/toast.service';
       <div class="modal" (click)="$event.stopPropagation()" style="width: min(640px, calc(100vw - 40px))">
         <div class="modal-header">
           <h3>{{ editId ? 'Edit' : 'Add' }} Product</h3>
-          <button class="btn btn-ghost btn-icon" (click)="showModal = false">✕</button>
+          <button class="btn btn-ghost btn-icon" (click)="showModal = false">âœ•</button>
         </div>
         <div class="form-grid cols-2" style="max-height: 65vh; overflow-y: auto; padding-right: 8px;">
           <div class="form-group"><label>Name *</label><input class="form-control" [(ngModel)]="form.name" placeholder="Product name"/></div>
@@ -110,8 +120,8 @@ import { ToastService } from '../../core/services/toast.service';
               <option *ngFor="let s of suppliers" [ngValue]="s.id">{{ s.name }}</option>
             </select>
           </div>
-          <div class="form-group"><label>Purchase Price (₹) *</label><input class="form-control" type="number" [(ngModel)]="form.purchasePrice"/></div>
-          <div class="form-group"><label>Selling Price (₹) *</label><input class="form-control" type="number" [(ngModel)]="form.sellingPrice"/></div>
+          <div class="form-group"><label>Purchase Price (&#8377;) *</label><input class="form-control" type="number" [(ngModel)]="form.purchasePrice"/></div>
+          <div class="form-group"><label>Selling Price (&#8377;) *</label><input class="form-control" type="number" [(ngModel)]="form.sellingPrice"/></div>
             <div class="form-group"><label>MRP</label><input class="form-control" type="number" [(ngModel)]="form.mrp"/></div>
           <div class="form-group"><label>GST %</label><input class="form-control" type="number" [(ngModel)]="form.taxPercent"/></div>
           <div class="form-group"><label>Reorder Level</label><input class="form-control" type="number" [(ngModel)]="form.reorderLevel"/></div>
@@ -130,6 +140,7 @@ import { ToastService } from '../../core/services/toast.service';
         </div>
       </div>
     </div>
+
   `,
   styles: [`
     .product-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
@@ -167,16 +178,23 @@ export class ProductListComponent implements OnInit {
   editId: number | null = null;
   saving = false;
   form: any = this.defaultForm();
+  
+  currentPage = 1;
+  pageSize = 20;
+  totalPages = 1;
+  totalItems = 0;
 
   constructor(
     private productService: ProductService,
     private categoryService: CategoryService,
     private supplierService: SupplierService,
-    private toast: ToastService
+    private toast: ToastService,
+    public settingsService: SettingsService
   ) { }
 
   ngOnInit(): void {
     this.load();
+    this.settingsService.load().subscribe();
     this.categoryService.getAll().subscribe(r => {
       if (r.success) {
         this.categories = r.data!;
@@ -191,25 +209,28 @@ export class ProductListComponent implements OnInit {
   load(): void {
     this.loading = true;
 
-    this.productService.getAll().subscribe({
+    const catId = this.catFilter ? Number(this.catFilter) : undefined;
+    this.productService.getAll(this.currentPage, this.pageSize, this.search, catId).subscribe({
       next: (r: any) => {
-        if (Array.isArray(r)) {
+        const data = r?.data || r?.Data;
+        if (data && (Array.isArray(data.items) || Array.isArray(data.Items))) {
+          const items = data.items || data.Items || [];
+          this.products = items;
+          this.totalItems = data.totalCount ?? data.TotalCount ?? data.totalItems ?? items.length;
+          this.totalPages = data.totalPages ?? data.TotalPages ?? 1;
+          this.currentPage = data.page ?? data.Page ?? 1;
+        } else if (Array.isArray(r)) {
           this.products = r;
-
-        } else if (r?.data?.items && Array.isArray(r.data.items)) {
-          this.products = r.data.items;
-
-        } else if (r?.data && Array.isArray(r.data)) {
-          this.products = r.data;
-
-        } else if (r?.Data?.items && Array.isArray(r.Data.items)) {
-          this.products = r.Data.items;
-
-        } else if (r?.Data && Array.isArray(r.Data)) {
-          this.products = r.Data;
-
+          this.totalItems = r.length;
+          this.totalPages = 1;
+        } else if (data && Array.isArray(data)) {
+          this.products = data;
+          this.totalItems = data.length;
+          this.totalPages = 1;
         } else {
           this.products = [];
+          this.totalItems = 0;
+          this.totalPages = 1;
         }
         this.filter();
         this.loading = false;
@@ -222,6 +243,18 @@ export class ProductListComponent implements OnInit {
         this.loading = false;
       }
     });
+  }
+
+  onFilterChange(): void {
+    this.currentPage = 1;
+    this.load();
+  }
+
+  goToPage(page: number): void {
+    if (page >= 1 && page <= this.totalPages) {
+      this.currentPage = page;
+      this.load();
+    }
   }
 
   filter(): void {
@@ -319,6 +352,58 @@ export class ProductListComponent implements OnInit {
     if (stock <= 0) return 'out';
     if (stock <= reorder) return 'low';
     return 'ok';
+  }
+
+  printBarcode(p: ProductDto): void {
+    if (!p.barcode) {
+      this.toast.error('This product does not have a barcode. Please edit and add one first.');
+      return;
+    }
+    this.doPrintBarcode(p);
+  }
+
+  private async doPrintBarcode(p: ProductDto): Promise<void> {
+    const apiUrl = `${environment.apiUrl}/products/barcode-image/${encodeURIComponent(p.barcode!)}`;
+    let imgSrc = '';
+    try {
+      const res = await fetch(apiUrl);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const blob = await res.blob();
+      imgSrc = await new Promise<string>((rs, rj) => {
+        const r = new FileReader();
+        r.onload = () => rs(r.result as string);
+        r.onerror = rj;
+        r.readAsDataURL(blob);
+      });
+    } catch {
+      this.toast.error('Could not load barcode image. Is the backend running?');
+      return;
+    }
+    const price = p.mrp || p.sellingPrice;
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+    document.body.appendChild(iframe);
+    const doc = iframe.contentWindow!.document;
+    doc.open();
+    doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+@page{size:58mm 40mm;margin:0}*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:58mm;height:40mm;background:white;font-family:Arial,sans-serif}
+.lbl{width:58mm;height:40mm;padding:2mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.c{font-size:8px;font-weight:bold}.n{font-size:10px;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.p{font-size:9px;font-weight:bold}.s{font-size:7px;color:#555}img{max-height:14mm;max-width:54mm}
+</style></head>
+<body><div class="lbl">
+<div class="c">${this.settingsService.storeName}</div>
+<div class="n">${p.name}</div>
+${price ? '<div class="p">MRP: &#8377;' + price + '</div>' : ''}
+<img src="${imgSrc}"/>
+</div></body></html>`);
+    doc.close();
+    setTimeout(() => {
+      iframe.contentWindow!.print();
+      setTimeout(() => document.body.removeChild(iframe), 1000);
+    }, 500);
   }
 
   getStockPct(p: ProductDto): number {
