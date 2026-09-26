@@ -130,6 +130,8 @@ import { environment } from '../../../environments/environment';
               <input type="checkbox" id="neg" [(ngModel)]="form.allowNegativeStock"/>
               Allow negative stock</label>
           </div>
+          <div class="form-group"><label>Manufacture Date</label><input class="form-control" type="date" [(ngModel)]="form.manufactureDate"/></div>
+          <div class="form-group"><label>Expiry Date</label><input class="form-control" type="date" [(ngModel)]="form.expiryDate"/></div>
           <div class="form-group" style="grid-column: 1 / -1;"><label>Description</label><textarea class="form-control" rows="2" [(ngModel)]="form.description"></textarea></div>
         </div>
         <div class="modal-footer">
@@ -315,7 +317,9 @@ export class ProductListComponent implements OnInit {
       reorderLevel: Number(this.form.reorderLevel) || 0,
       mrp: Number(this.form.mrp) || 0,
       description: this.form.description?.toString().trim() || undefined,
-      allowNegativeStock: !!this.form.allowNegativeStock
+      allowNegativeStock: !!this.form.allowNegativeStock,
+      manufactureDate: this.form.manufactureDate || undefined,
+      expiryDate: this.form.expiryDate || undefined
     };
 
     this.saving = true;
@@ -380,6 +384,10 @@ export class ProductListComponent implements OnInit {
       return;
     }
     const price = p.mrp || p.sellingPrice;
+    const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : '';
+    const mfg = fmtDate((p as any).manufactureDate);
+    const exp = fmtDate((p as any).expiryDate);
+    const mfgExp = (mfg || exp) ? `<div class="dates">${mfg ? 'MFG: ' + mfg : ''}${mfg && exp ? ' | ' : ''}${exp ? 'EXP: ' + exp : ''}</div>` : '';
     const iframe = document.createElement('iframe');
     iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
     document.body.appendChild(iframe);
@@ -387,18 +395,62 @@ export class ProductListComponent implements OnInit {
     doc.open();
     doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
 <style>
-@page{size:58mm 40mm;margin:0}*{box-sizing:border-box;margin:0;padding:0}
-html,body{width:58mm;height:40mm;background:white;font-family:Arial,sans-serif}
-.lbl{width:58mm;height:40mm;padding:2mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
-.c{font-size:8px;font-weight:bold}.n{font-size:10px;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.p{font-size:9px;font-weight:bold}.s{font-size:7px;color:#555}img{max-height:14mm;max-width:54mm}
+@page {
+  size: 76mm 25mm;
+  margin: 0;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 76mm;
+  height: 25mm;
+  background: white;
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-print-color-adjust: exact;
+}
+.sheet {
+  width: 76mm;
+  height: 25mm;
+  display: flex;
+  flex-direction: row;
+}
+.lbl {
+  width: 38mm;
+  height: 25mm;
+  padding: 1.5mm 2mm;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: hidden;
+}
+.store { font-size: 6px; font-weight: bold; letter-spacing: 0.3px; line-height: 1.1; margin-bottom: 0.5mm; }
+.name { font-size: 7.5px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 34mm; line-height: 1.2; }
+.price { font-size: 7px; font-weight: bold; margin: 0.3mm 0; }
+.sku { font-size: 5.5px; color: #555; }
+.dates { font-size: 5.5px; color: #333; display: flex; gap: 4px; justify-content: center; }
+img { max-height: 10mm; max-width: 34mm; margin: 0.3mm 0; }
 </style></head>
-<body><div class="lbl">
-<div class="c">${this.settingsService.storeName}</div>
-<div class="n">${p.name}</div>
-${price ? '<div class="p">MRP: &#8377;' + price + '</div>' : ''}
-<img src="${imgSrc}"/>
-</div></body></html>`);
+<body>
+<div class="sheet">
+  <div class="lbl">
+    <div class="store">${this.settingsService.storeName}</div>
+    <div class="name">${p.name}</div>
+    ${price ? '<div class="price">MRP: &#8377;' + price + '</div>' : ''}
+    <img src="${imgSrc}"/>
+    <div class="sku">${p.sku || ''}</div>
+    ${mfgExp}
+  </div>
+  <div class="lbl">
+    <div class="store">${this.settingsService.storeName}</div>
+    <div class="name">${p.name}</div>
+    ${price ? '<div class="price">MRP: &#8377;' + price + '</div>' : ''}
+    <img src="${imgSrc}"/>
+    <div class="sku">${p.sku || ''}</div>
+    ${mfgExp}
+  </div>
+</div>
+</body></html>`);
     doc.close();
     setTimeout(() => {
       iframe.contentWindow!.print();
@@ -434,7 +486,9 @@ ${price ? '<div class="p">MRP: &#8377;' + price + '</div>' : ''}
       reorderLevel: 5,
       supplierId: undefined,
       description: '',
-      allowNegativeStock: false
+      allowNegativeStock: false,
+      manufactureDate: undefined,
+      expiryDate: undefined
     };
   }
 }

@@ -153,6 +153,8 @@ export interface ProductDto {
   imageUrl?: string;
   description?: string;
   allowNegativeStock: boolean;
+  manufactureDate?: string;
+  expiryDate?: string;
 }
 
 export interface CreateProductRequest {
@@ -170,6 +172,8 @@ export interface CreateProductRequest {
   imageUrl?: string;
   description?: string;
   allowNegativeStock: boolean;
+  manufactureDate?: string;
+  expiryDate?: string;
 }
 
 export interface UpdateProductRequest {
@@ -187,6 +191,8 @@ export interface UpdateProductRequest {
   imageUrl?: string;
   description?: string;
   allowNegativeStock: boolean;
+  manufactureDate?: string;
+  expiryDate?: string;
 }
 
 // ─── Bill ────────────────────────────────────────────────────────────────────
