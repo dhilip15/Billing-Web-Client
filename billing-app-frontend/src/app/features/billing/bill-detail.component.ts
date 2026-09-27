@@ -163,10 +163,10 @@ import { FormsModule } from '@angular/forms';
       <div class="rpt-total-row">
         <span>Total Items : {{ ($any(bill).billItems || $any(bill).items || []).length }}</span>
         <span class="totals-right">
-            <div style="display: flex; justify-content: space-between; gap: 20px;">
+            <div style="display: flex; justify-content: space-between; gap: 8px;">
                 <span>Total Amt :</span><span>{{ bill.subTotal + bill.taxAmount | number:'1.2-2' }}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; gap: 20px;" *ngIf="getRoundedOff() !== 0">
+            <div style="display: flex; justify-content: space-between; gap: 8px;" *ngIf="getRoundedOff() !== 0">
                 <span>Round off :</span><span>{{ getRoundedOff() | number:'1.2-2' }}</span>
             </div>
         </span>
@@ -245,16 +245,16 @@ import { FormsModule } from '@angular/forms';
 
       .receipt-print {
         display: block !important;
-        width: 76mm;
-        max-width: 76mm;
-        margin: 0 auto;
-        padding: 4mm 1mm 20mm 1mm;
+        width: 72mm !important;
+        max-width: 72mm !important;
+        box-sizing: border-box !important;
+        margin: 0 auto !important;
+        padding: 2mm 2mm 15mm 2mm;
         font-family: 'Courier New', Courier, monospace;
         color: #000;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 700;
         line-height: 1.4;
-        box-sizing: border-box;
       }
 
       .rpt-store-name {
@@ -305,9 +305,9 @@ import { FormsModule } from '@angular/forms';
       }
 
       .col-desc  { flex: 1; min-width: 0; padding-right: 4px; overflow: hidden; word-break: break-word; }
-      .col-rate  { width: 52px; text-align: right; flex-shrink: 0; }
-      .col-qty   { width: 34px; text-align: right; flex-shrink: 0; }
-      .col-amt   { width: 62px; text-align: right; flex-shrink: 0; }
+      .col-rate  { width: 46px; text-align: right; flex-shrink: 0; }
+      .col-qty   { width: 26px; text-align: right; flex-shrink: 0; }
+      .col-amt   { width: 52px; text-align: right; flex-shrink: 0; }
 
       .rpt-total-row {
         display: flex;
