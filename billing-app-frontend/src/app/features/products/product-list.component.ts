@@ -96,12 +96,12 @@ import { environment } from '../../../environments/environment';
       </div>
     </div>
 
-    <!-- Add/Edit Modal -->
+    <!-- Add/Edit Product Modal -->
     <div class="modal-overlay" *ngIf="showModal" (click)="showModal = false">
       <div class="modal" (click)="$event.stopPropagation()" style="width: min(640px, calc(100vw - 40px))">
         <div class="modal-header">
           <h3>{{ editId ? 'Edit' : 'Add' }} Product</h3>
-          <button class="btn btn-ghost btn-icon" (click)="showModal = false">âœ•</button>
+          <button class="btn btn-ghost btn-icon" (click)="showModal = false">✕</button>
         </div>
         <div class="form-grid cols-2" style="max-height: 65vh; overflow-y: auto; padding-right: 8px;">
           <div class="form-group"><label>Name *</label><input class="form-control" [(ngModel)]="form.name" placeholder="Product name"/></div>
@@ -122,7 +122,7 @@ import { environment } from '../../../environments/environment';
           </div>
           <div class="form-group"><label>Purchase Price (&#8377;) *</label><input class="form-control" type="number" [(ngModel)]="form.purchasePrice"/></div>
           <div class="form-group"><label>Selling Price (&#8377;) *</label><input class="form-control" type="number" [(ngModel)]="form.sellingPrice"/></div>
-            <div class="form-group"><label>MRP</label><input class="form-control" type="number" [(ngModel)]="form.mrp"/></div>
+          <div class="form-group"><label>MRP</label><input class="form-control" type="number" [(ngModel)]="form.mrp"/></div>
           <div class="form-group"><label>GST %</label><input class="form-control" type="number" [(ngModel)]="form.taxPercent"/></div>
           <div class="form-group"><label>Reorder Level</label><input class="form-control" type="number" [(ngModel)]="form.reorderLevel"/></div>
           <div class="form-group flex items-center gap-2">
@@ -143,6 +143,53 @@ import { environment } from '../../../environments/environment';
       </div>
     </div>
 
+    <!-- Simple Barcode Print Modal -->
+    <div class="modal-overlay" *ngIf="showBarcodeModal" (click)="showBarcodeModal = false">
+      <div class="modal barcode-modal" (click)="$event.stopPropagation()" style="width: min(440px, calc(100vw - 32px))">
+        <div class="modal-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.25rem;">🏷️</span>
+            <h3 style="margin:0; font-size: 1.1rem; font-weight: 700;">Print Barcode Labels</h3>
+          </div>
+          <button class="btn btn-ghost btn-icon" (click)="showBarcodeModal = false">✕</button>
+        </div>
+
+        <div class="modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+          <!-- Product Info -->
+          <div style="background: var(--color-bg-elevated); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 12px 16px;">
+            <div style="font-weight: 700; font-size: 1rem;">{{ barcodeProduct?.name }}</div>
+            <div style="font-size: 0.825rem; color: var(--color-text-muted); display: flex; flex-wrap: wrap; gap: 14px; margin-top: 4px;">
+              <span>SKU: <strong>{{ barcodeProduct?.sku }}</strong></span>
+              <span>Barcode: <strong>{{ barcodeProduct?.barcode }}</strong></span>
+              <span>MRP: <strong>₹{{ barcodeProduct?.mrp || barcodeProduct?.sellingPrice }}</strong></span>
+            </div>
+            <div *ngIf="barcodePreviewImg" style="margin-top: 8px; text-align: center;">
+              <img [src]="barcodePreviewImg" style="max-height: 36px; max-width: 80%; object-fit: contain;" />
+            </div>
+          </div>
+
+          <!-- Quantity -->
+          <div class="form-group">
+            <label style="font-weight: 600; font-size: 0.875rem; margin-bottom: 6px; display: block;">Number of Labels</label>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <input class="form-control" type="number" min="1" max="500" [(ngModel)]="barcodeQuantity" style="width: 100px; font-weight: 600; text-align: center;" />
+              <div style="display: flex; gap: 6px;">
+                <button class="btn btn-ghost btn-sm" (click)="barcodeQuantity = 2">2</button>
+                <button class="btn btn-ghost btn-sm" (click)="barcodeQuantity = 10">10</button>
+                <button class="btn btn-ghost btn-sm" (click)="barcodeQuantity = 50">50</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="padding: 14px 20px; border-top: 1px solid var(--color-border); display: flex; justify-content: flex-end; gap: 10px;">
+          <button class="btn btn-ghost" (click)="showBarcodeModal = false">Cancel</button>
+          <button class="btn btn-primary" (click)="executePrintBarcode()" [disabled]="printingBarcode">
+            <span *ngIf="printingBarcode" class="spinner"></span> 🖨️ Print {{ barcodeQuantity }} Label(s)
+          </button>
+        </div>
+      </div>
+    </div>
   `,
   styles: [`
     .product-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
@@ -186,208 +233,112 @@ export class ProductListComponent implements OnInit {
   totalPages = 1;
   totalItems = 0;
 
+  // Barcode Printing State
+  showBarcodeModal = false;
+  barcodeProduct: ProductDto | null = null;
+  barcodeQuantity = 2;
+  barcodePreviewImg = '';
+  printingBarcode = false;
+
   constructor(
     private productService: ProductService,
     private categoryService: CategoryService,
     private supplierService: SupplierService,
     private toast: ToastService,
     public settingsService: SettingsService
-  ) { }
+  ) {}
 
   ngOnInit(): void {
     this.load();
     this.settingsService.load().subscribe();
     this.categoryService.getAll().subscribe(r => {
-      if (r.success) {
-        this.categories = r.data!;
-        if (!this.editId && this.form.categoryId === 0 && this.categories.length > 0) {
-          this.form.categoryId = this.categories[0].id;
-        }
-      }
+      if (r.success && r.data) this.categories = r.data;
     });
-    this.supplierService.getAll().subscribe(r => { if (r.success) this.suppliers = r.data!; });
-  }
-
-  load(): void {
-    this.loading = true;
-
-    const catId = this.catFilter ? Number(this.catFilter) : undefined;
-    this.productService.getAll(this.currentPage, this.pageSize, this.search, catId).subscribe({
-      next: (r: any) => {
-        const data = r?.data || r?.Data;
-        if (data && (Array.isArray(data.items) || Array.isArray(data.Items))) {
-          const items = data.items || data.Items || [];
-          this.products = items;
-          this.totalItems = data.totalCount ?? data.TotalCount ?? data.totalItems ?? items.length;
-          this.totalPages = data.totalPages ?? data.TotalPages ?? 1;
-          this.currentPage = data.page ?? data.Page ?? 1;
-        } else if (Array.isArray(r)) {
-          this.products = r;
-          this.totalItems = r.length;
-          this.totalPages = 1;
-        } else if (data && Array.isArray(data)) {
-          this.products = data;
-          this.totalItems = data.length;
-          this.totalPages = 1;
-        } else {
-          this.products = [];
-          this.totalItems = 0;
-          this.totalPages = 1;
-        }
-        this.filter();
-        this.loading = false;
-      },
-
-      error: (err) => {
-        console.error('API Error:', err);
-        this.products = [];
-        this.filtered = [];
-        this.loading = false;
-      }
+    this.supplierService.getAll().subscribe(r => {
+      if (r.success && r.data) this.suppliers = r.data;
     });
   }
 
-  onFilterChange(): void {
-    this.currentPage = 1;
-    this.load();
-  }
-
-  goToPage(page: number): void {
-    if (page >= 1 && page <= this.totalPages) {
-      this.currentPage = page;
-      this.load();
-    }
-  }
-
-  filter(): void {
-    let list = this.products || [];
-    if (this.search) {
-      const q = this.search.toLowerCase().trim();
-      list = list.filter(p =>
-        (p.name ? p.name.toLowerCase() : '').includes(q) ||
-        (p.sku ? p.sku.toLowerCase() : '').includes(q) ||
-        (p.barcode ? p.barcode.toLowerCase() : '').includes(q)
-      );
-    }
-    if (this.catFilter) {
-      list = list.filter(p => p.categoryId === Number(this.catFilter));
-    }
-    if (this.lowStockOnly) {
-      list = list.filter(p => (p.currentStock || 0) <= (p.reorderLevel || 0));
-    }
-    this.filtered = list;
-  }
-
-  openModal(p?: ProductDto): void {
-    this.editId = p?.id ?? null;
-    this.form = p ? { ...p } : this.defaultForm();
-    if (!this.editId && this.categories.length > 0 && (!this.form.categoryId || this.form.categoryId === 0)) {
-      this.form.categoryId = this.categories[0].id;
-    }
-    this.showModal = true;
-  }
-
-  save(): void {
-    if (!this.form.name || !this.form.name.toString().trim()) {
-      this.toast.error('Product name is required');
-      return;
-    }
-    if (!this.form.sku || !this.form.sku.toString().trim()) {
-      this.toast.error('SKU is required');
-      return;
-    }
-    const catId = Number(this.form.categoryId);
-    if (!catId || catId <= 0) {
-      this.toast.error('Please select a Category. (Create a category first if none exists)');
-      return;
-    }
-
-    const payload: CreateProductRequest = {
-      name: this.form.name.toString().trim(),
-      sku: this.form.sku.toString().trim(),
-      barcode: this.form.barcode?.toString().trim() || undefined,
-      unit: this.form.unit?.toString().trim() || 'pcs',
-      categoryId: catId,
-      supplierId: this.form.supplierId && this.form.supplierId !== 'null' && Number(this.form.supplierId) > 0
-        ? Number(this.form.supplierId)
-        : undefined,
-      purchasePrice: Number(this.form.purchasePrice) || 0,
-      sellingPrice: Number(this.form.sellingPrice) || 0,
-      taxPercent: Number(this.form.taxPercent) || 0,
-      reorderLevel: Number(this.form.reorderLevel) || 0,
-      mrp: Number(this.form.mrp) || 0,
-      description: this.form.description?.toString().trim() || undefined,
-      allowNegativeStock: !!this.form.allowNegativeStock,
-      manufactureDate: this.form.manufactureDate || undefined,
-      expiryDate: this.form.expiryDate || undefined
-    };
-
-    this.saving = true;
-    const obs = this.editId
-      ? this.productService.update(this.editId, payload)
-      : this.productService.create(payload);
-    obs.subscribe({
-      next: r => {
-        if (r.success) {
-          this.toast.success(this.editId ? 'Product updated!' : 'Product added!');
-          this.showModal = false;
-          this.load();
-        } else {
-          this.toast.error(r.message || 'Failed to save product');
-        }
-        this.saving = false;
-      },
-      error: () => {
-        this.saving = false;
-      }
-    });
-  }
-
-  deleteProduct(id: number): void {
-    if (!confirm('Delete this product?')) return;
-    this.productService.delete(id).subscribe(r => {
-      if (r.success) { this.toast.success('Deleted!'); this.load(); }
-    });
-  }
-
-  getStockClass(p: ProductDto): string {
-    const stock = p.currentStock || 0;
-    const reorder = p.reorderLevel || 0;
-    if (stock <= 0) return 'out';
-    if (stock <= reorder) return 'low';
-    return 'ok';
-  }
-
-  printBarcode(p: ProductDto): void {
+  async printBarcode(p: ProductDto): Promise<void> {
     if (!p.barcode) {
       this.toast.error('This product does not have a barcode. Please edit and add one first.');
       return;
     }
-    this.doPrintBarcode(p);
-  }
 
-  private async doPrintBarcode(p: ProductDto): Promise<void> {
-    const apiUrl = `${environment.apiUrl}/products/barcode-image/${encodeURIComponent(p.barcode!)}`;
-    let imgSrc = '';
+    this.barcodeProduct = p;
+    this.barcodeQuantity = 2; // Default to 2 labels (1 row of 2-up)
+    this.barcodePreviewImg = '';
+
+    const apiUrl = `${environment.apiUrl}/products/barcode-image/${encodeURIComponent(p.barcode)}`;
     try {
       const res = await fetch(apiUrl);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const blob = await res.blob();
-      imgSrc = await new Promise<string>((rs, rj) => {
-        const r = new FileReader();
-        r.onload = () => rs(r.result as string);
-        r.onerror = rj;
-        r.readAsDataURL(blob);
-      });
-    } catch {
-      this.toast.error('Could not load barcode image. Is the backend running?');
-      return;
-    }
-    const price = p.mrp || p.sellingPrice;
+      if (res.ok) {
+        const blob = await res.blob();
+        this.barcodePreviewImg = await new Promise<string>((rs, rj) => {
+          const r = new FileReader();
+          r.onload = () => rs(r.result as string);
+          r.onerror = rj;
+          r.readAsDataURL(blob);
+        });
+      }
+    } catch {}
+
+    this.showBarcodeModal = true;
+  }
+
+  getFormattedMfgExp(p: ProductDto | null): string {
+    if (!p) return '';
     const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : '';
     const mfg = fmtDate((p as any).manufactureDate);
     const exp = fmtDate((p as any).expiryDate);
-    const mfgExp = (mfg || exp) ? `<div class="dates">${mfg ? 'MFG: ' + mfg : ''}${mfg && exp ? ' | ' : ''}${exp ? 'EXP: ' + exp : ''}</div>` : '';
+    if (!mfg && !exp) return '';
+    return `${mfg ? 'MFG:' + mfg : ''}${mfg && exp ? ' | ' : ''}${exp ? 'EXP:' + exp : ''}`;
+  }
+
+  async executePrintBarcode(): Promise<void> {
+    if (!this.barcodeProduct || !this.barcodePreviewImg) {
+      this.toast.error('Barcode preview image not ready');
+      return;
+    }
+
+    this.printingBarcode = true;
+    const p = this.barcodeProduct;
+    const price = p.mrp || p.sellingPrice;
+    const mfgExpText = this.getFormattedMfgExp(p);
+
+    // TVS LP 46 NEO: Force landscape so Chrome rotates the "2 x 4" paper
+    // to ~4" wide × 2" tall, matching the 102mm roll width.
+    // Simple horizontal layout: 2 labels side by side, NO rotation.
+
+    const singleLabelHtml = `
+      <div class="lbl">
+        <div class="store">${this.settingsService.storeName}</div>
+        <div class="name">${p.name}</div>
+        ${price ? `<div class="price">MRP: &#8377;${price}</div>` : ''}
+        <img src="${this.barcodePreviewImg}"/>
+        ${p.sku ? `<div class="sku">${p.sku}</div>` : ''}
+        ${mfgExpText ? `<div class="dates">${mfgExpText}</div>` : ''}
+      </div>
+    `;
+
+    const totalQty = Math.max(1, this.barcodeQuantity);
+    const rowCount = Math.ceil(totalQty / 2);
+    let sheetsHtml = '';
+
+    let itemsPrinted = 0;
+    for (let r = 0; r < rowCount; r++) {
+      let rowLabels = '';
+      for (let c = 0; c < 2; c++) {
+        if (itemsPrinted < totalQty) {
+          rowLabels += singleLabelHtml;
+          itemsPrinted++;
+        } else {
+          rowLabels += `<div class="lbl" style="visibility:hidden"></div>`;
+        }
+      }
+      sheetsHtml += `<div class="sheet">${rowLabels}</div>`;
+    }
+
     const iframe = document.createElement('iframe');
     iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
     document.body.appendChild(iframe);
@@ -396,66 +347,110 @@ export class ProductListComponent implements OnInit {
     doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
 <style>
 @page {
-  size: 76mm 25mm;
+  size: 102mm 25mm;
   margin: 0;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body {
-  width: 76mm;
-  height: 25mm;
+  margin: 0;
+  padding: 0;
   background: white;
   font-family: Arial, Helvetica, sans-serif;
   -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 .sheet {
-  width: 76mm;
+  width: 100%;
   height: 25mm;
   display: flex;
   flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 1mm;
+  box-sizing: border-box;
+  page-break-after: always;
+  break-after: page;
+  overflow: hidden;
 }
 .lbl {
-  width: 38mm;
-  height: 25mm;
-  padding: 1.5mm 2mm;
+  width: 48%;
+  height: 24mm;
+  padding: 0.5mm 1mm;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
   overflow: hidden;
+  box-sizing: border-box;
 }
-.store { font-size: 6px; font-weight: bold; letter-spacing: 0.3px; line-height: 1.1; margin-bottom: 0.5mm; }
-.name { font-size: 7.5px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 34mm; line-height: 1.2; }
-.price { font-size: 7px; font-weight: bold; margin: 0.3mm 0; }
-.sku { font-size: 5.5px; color: #555; }
-.dates { font-size: 5.5px; color: #333; display: flex; gap: 4px; justify-content: center; }
-img { max-height: 10mm; max-width: 34mm; margin: 0.3mm 0; }
+.store {
+  font-size: 7pt;
+  font-weight: bold;
+  letter-spacing: 0.2px;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  margin-bottom: 0.3mm;
+}
+.name {
+  font-size: 8pt;
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  line-height: 1.1;
+}
+.price {
+  font-size: 7.5pt;
+  font-weight: bold;
+  white-space: nowrap;
+  margin: 0.3mm 0;
+}
+.sku {
+  font-size: 6pt;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.dates {
+  font-size: 5.5pt;
+  color: #333;
+  white-space: nowrap;
+}
+img {
+  max-height: 10mm;
+  max-width: 90%;
+  object-fit: contain;
+  margin: 0.3mm auto;
+  display: block;
+}
 </style></head>
 <body>
-<div class="sheet">
-  <div class="lbl">
-    <div class="store">${this.settingsService.storeName}</div>
-    <div class="name">${p.name}</div>
-    ${price ? '<div class="price">MRP: &#8377;' + price + '</div>' : ''}
-    <img src="${imgSrc}"/>
-    <div class="sku">${p.sku || ''}</div>
-    ${mfgExp}
-  </div>
-  <div class="lbl">
-    <div class="store">${this.settingsService.storeName}</div>
-    <div class="name">${p.name}</div>
-    ${price ? '<div class="price">MRP: &#8377;' + price + '</div>' : ''}
-    <img src="${imgSrc}"/>
-    <div class="sku">${p.sku || ''}</div>
-    ${mfgExp}
-  </div>
-</div>
+${sheetsHtml}
 </body></html>`);
     doc.close();
+
     setTimeout(() => {
+      this.printingBarcode = false;
+      this.showBarcodeModal = false;
       iframe.contentWindow!.print();
-      setTimeout(() => document.body.removeChild(iframe), 1000);
-    }, 500);
+      setTimeout(() => document.body.removeChild(iframe), 1500);
+      this.toast.success(`Printing ${totalQty} barcode label(s)`);
+    }, 400);
+  }
+
+  getStockClass(p: ProductDto): string {
+    const stock = p.currentStock || 0;
+    const reorder = p.reorderLevel || 0;
+    if (stock <= 0) return 'out';
+    if (stock <= reorder) return 'low';
+    return 'ok';
   }
 
   getStockPct(p: ProductDto): number {
@@ -490,5 +485,134 @@ img { max-height: 10mm; max-width: 34mm; margin: 0.3mm 0; }
       manufactureDate: undefined,
       expiryDate: undefined
     };
+  }
+
+  load(): void {
+    this.loading = true;
+    this.productService.getAll().subscribe({
+      next: (res: any) => {
+        let items: ProductDto[] = [];
+        if (Array.isArray(res)) {
+          items = res;
+        } else if (res?.data?.items && Array.isArray(res.data.items)) {
+          items = res.data.items;
+          this.totalItems = res.data.totalCount ?? items.length;
+          this.totalPages = res.data.totalPages ?? Math.ceil(this.totalItems / this.pageSize);
+        } else if (res?.data && Array.isArray(res.data)) {
+          items = res.data;
+        } else if (res?.Data?.items && Array.isArray(res.Data.items)) {
+          items = res.Data.items;
+          this.totalItems = res.Data.totalCount ?? items.length;
+          this.totalPages = res.Data.totalPages ?? Math.ceil(this.totalItems / this.pageSize);
+        } else if (res?.Data && Array.isArray(res.Data)) {
+          items = res.Data;
+        }
+        this.products = items;
+        this.filter();
+        this.loading = false;
+      },
+      error: () => {
+        this.products = [];
+        this.filter();
+        this.toast.error('Failed to load products');
+        this.loading = false;
+      }
+    });
+  }
+
+  onFilterChange(): void {
+    this.currentPage = 1;
+    this.filter();
+  }
+
+  filter(): void {
+    const list = Array.isArray(this.products) ? this.products : [];
+    let result = [...list];
+    if (this.search) {
+      const s = this.search.toLowerCase();
+      result = result.filter(p => (p.name && p.name.toLowerCase().includes(s)) || (p.sku && p.sku.toLowerCase().includes(s)));
+    }
+    if (this.catFilter) {
+      result = result.filter(p => p.categoryId === +this.catFilter);
+    }
+    if (this.lowStockOnly) {
+      result = result.filter(p => (p.currentStock || 0) <= (p.reorderLevel || 0));
+    }
+    this.totalItems = result.length;
+    this.totalPages = Math.ceil(this.totalItems / this.pageSize) || 1;
+    const start = (this.currentPage - 1) * this.pageSize;
+    this.filtered = result.slice(start, start + this.pageSize);
+  }
+
+  goToPage(page: number): void {
+    if (page >= 1 && page <= this.totalPages) {
+      this.currentPage = page;
+      this.filter();
+    }
+  }
+
+  openModal(p?: ProductDto): void {
+    if (p) {
+      this.editId = p.id;
+      this.form = { ...p };
+    } else {
+      this.editId = null;
+      this.form = this.defaultForm();
+    }
+    this.showModal = true;
+  }
+
+  save(): void {
+    if (!this.form.name || !this.form.sku) {
+      this.toast.error('Name and SKU are required');
+      return;
+    }
+    this.saving = true;
+    const req = { ...this.form };
+    if (this.editId) {
+      this.productService.update(this.editId, req).subscribe({
+        next: (res) => {
+          if (res.success) {
+            this.toast.success('Product updated');
+            this.showModal = false;
+            this.load();
+          }
+          this.saving = false;
+        },
+        error: () => {
+          this.toast.error('Failed to update product');
+          this.saving = false;
+        }
+      });
+    } else {
+      this.productService.create(req).subscribe({
+        next: (res) => {
+          if (res.success) {
+            this.toast.success('Product created');
+            this.showModal = false;
+            this.load();
+          }
+          this.saving = false;
+        },
+        error: () => {
+          this.toast.error('Failed to create product');
+          this.saving = false;
+        }
+      });
+    }
+  }
+
+  deleteProduct(id: number): void {
+    if (confirm('Are you sure you want to delete this product?')) {
+      this.productService.delete(id).subscribe({
+        next: (res) => {
+          if (res.success) {
+            this.toast.success('Product deleted');
+            this.load();
+          }
+        },
+        error: () => this.toast.error('Failed to delete product')
+      });
+    }
   }
 }
