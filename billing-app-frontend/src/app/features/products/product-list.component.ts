@@ -227,9 +227,9 @@ export class ProductListComponent implements OnInit {
   editId: number | null = null;
   saving = false;
   form: any = this.defaultForm();
-  
+
   currentPage = 1;
-  pageSize = 20;
+  pageSize = 20000;
   totalPages = 1;
   totalItems = 0;
 
@@ -246,7 +246,7 @@ export class ProductListComponent implements OnInit {
     private supplierService: SupplierService,
     private toast: ToastService,
     public settingsService: SettingsService
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.load();
@@ -281,7 +281,7 @@ export class ProductListComponent implements OnInit {
           r.readAsDataURL(blob);
         });
       }
-    } catch {}
+    } catch { }
 
     this.showBarcodeModal = true;
   }
@@ -489,7 +489,7 @@ ${sheetsHtml}
 
   load(): void {
     this.loading = true;
-    this.productService.getAll().subscribe({
+    this.productService.getAll(1, 200000).subscribe({
       next: (res: any) => {
         let items: ProductDto[] = [];
         if (Array.isArray(res)) {
