@@ -70,10 +70,19 @@ import { Router } from '@angular/router';
         </div>
         <div *ngIf="form.items.length === 0" class="text-muted text-sm mb-3">Click "+ Add Item" to add products to this purchase.</div>
         <div *ngFor="let item of form.items; let i = index" class="purchase-item-row">
-          <select class="form-control" [(ngModel)]="item.productId" style="flex:2">
-            <option [ngValue]="null">Select product...</option>
-            <option *ngFor="let p of products" [ngValue]="p.id">{{ p.name }} ({{ p.sku }})</option>
-          </select>
+          <div class="product-search" style="flex:2">
+            <input class="form-control" type="text" placeholder="Search product by name or SKU..."
+              [ngModel]="item.open ? item.search : getProductLabel(item.productId)"
+              (ngModelChange)="item.search = $event; item.open = true"
+              (focus)="item.search = ''; item.open = true"
+              (blur)="item.open = false"/>
+            <div class="product-search-list" *ngIf="item.open">
+              <div class="product-search-opt" *ngFor="let p of filterProducts(item.search)" (mousedown)="selectProduct(item, p)">
+                {{ p.name }} <span class="text-muted">({{ p.sku }})</span>
+              </div>
+              <div class="product-search-opt text-muted" *ngIf="filterProducts(item.search).length === 0">No products found</div>
+            </div>
+          </div>
           <div class="form-group" style="flex:1;margin:0"><input class="form-control" type="number" [(ngModel)]="item.quantity" placeholder="Qty" min="1"/></div>
           <div class="form-group" style="flex:1;margin:0"><input class="form-control" type="number" [(ngModel)]="item.unitPrice" placeholder="Cost"/></div>
           <button class="btn btn-danger btn-icon btn-sm" (click)="removeItem(i)">✕</button>
@@ -86,7 +95,11 @@ import { Router } from '@angular/router';
       </div>
     </div>
   `,
-  styles: [`.purchase-item-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}`]
+  styles: [`.purchase-item-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+    .product-search{position:relative}
+    .product-search-list{position:absolute;top:100%;left:0;right:0;max-height:220px;overflow-y:auto;z-index:50;background:var(--color-bg-elevated,#fff);border:1px solid var(--color-border,#ddd);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.15)}
+    .product-search-opt{padding:8px 12px;cursor:pointer;font-size:.875rem}
+    .product-search-opt:hover{background:rgba(65,220,142,.15)}`]
 })
 export class PurchaseListComponent implements OnInit {
   purchases: PurchaseDto[] = [];
@@ -144,7 +157,7 @@ export class PurchaseListComponent implements OnInit {
   }
 
   loadProducts(): void {
-    this.productService.getAll().subscribe({
+    this.productService.getAll(1, 200000).subscribe({
       next: (r: any) => {
         if (Array.isArray(r)) {
           this.products = r;
@@ -171,7 +184,24 @@ export class PurchaseListComponent implements OnInit {
   }
 
   addItem(): void {
-    this.form.items.push({ productId: null, quantity: 1, unitPrice: 0 });
+    this.form.items.push({ productId: null, quantity: 1, unitPrice: 0, search: '', open: false });
+  }
+
+  getProductLabel(id: any): string {
+    const p = this.products.find(x => x.id === id);
+    return p ? `${p.name} (${p.sku})` : '';
+  }
+
+  filterProducts(term: string): ProductDto[] {
+    const s = (term || '').trim().toLowerCase();
+    if (!s) return this.products;
+    return this.products.filter(p => (p.name || '').toLowerCase().includes(s) || (p.sku || '').toLowerCase().includes(s));
+  }
+
+  selectProduct(item: any, p: ProductDto): void {
+    item.productId = p.id;
+    item.search = '';
+    item.open = false;
   }
 
   removeItem(i: number): void {
@@ -204,8 +234,8 @@ export class PurchaseListComponent implements OnInit {
     };
 
     this.saving = true;
-    const requestPayload = this.editingId 
-      ? this.purchaseService.update(this.editingId, payload) 
+    const requestPayload = this.editingId
+      ? this.purchaseService.update(this.editingId, payload)
       : this.purchaseService.create(payload);
 
     requestPayload.subscribe({
@@ -233,11 +263,11 @@ export class PurchaseListComponent implements OnInit {
     this.purchaseService.getById(p.id).subscribe({
       next: (r: any) => {
         const data = r.data || r;
-        
+
         // Fix for timezone issue: Get today's local date string for fallback
         const today = new Date();
         const localToday = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().substring(0, 10);
-        
+
         this.form = {
           supplierId: data.supplierId,
           purchaseDate: data.purchaseDate ? data.purchaseDate.substring(0, 10) : localToday,
