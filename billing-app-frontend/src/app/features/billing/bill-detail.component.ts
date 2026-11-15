@@ -127,81 +127,114 @@ import { FormsModule } from '@angular/forms';
       <div class="rpt-store-phone" *ngIf="settingsService.settings?.phone">Ph: {{ settingsService.settings?.phone }}</div>
       <div class="rpt-store-phone" *ngIf="settingsService.settings?.email">Email: {{ settingsService.settings?.email }}</div>
       <div class="rpt-store-phone" *ngIf="settingsService.settings?.gstNumber">GST No: {{ settingsService.settings?.gstNumber }}</div>
+      
       <div class="rpt-separator"></div>
       <div class="rpt-title">CASH BILL</div>
       <div class="rpt-separator"></div>
 
       <!-- Bill meta -->
-      <div class="rpt-meta-row">
-        <div>Bill No : {{ bill.invoiceNo }}</div>
-        <div>User Name : {{ bill.createdBy || 'Walk-in' }}</div>
-        <div>Bill Date : {{ bill.billDate | date:'dd-MM-yyyy hh:mm a' }}</div>
-        <div>To : {{ bill.customerName || 'Walk-in' }}</div>
-      </div>
-      <div class="rpt-separator"></div>
-
-      <!-- Column Headers -->
-      <div class="rpt-col-header">
-        <span class="col-desc">Description</span>
-        <span class="col-rate">Rate</span>
-        <span class="col-qty">Qty</span>
-        <span class="col-amt">Amount</span>
-      </div>
-      <div class="rpt-separator"></div>
-
-      <!-- Items -->
-      <div class="rpt-item-row" *ngFor="let item of ($any(bill).billItems || $any(bill).items || [])">
-        <span class="col-desc">{{ item.productName }}</span>
-        <span class="col-rate">{{ item.unitPrice | number:'1.2-2' }}</span>
-        <span class="col-qty">{{ item.quantity }}</span>
-        <span class="col-amt">{{ calcItemTotal(item) | number:'1.2-2' }}</span>
+      <div class="rpt-meta-info">
+        <div><span class="rpt-meta-label">Bill No</span>: {{ bill.invoiceNo }}</div>
+        <div><span class="rpt-meta-label">User Name</span>: {{ bill.createdBy || 'Administrator' }}</div>
+        <div><span class="rpt-meta-label">Bill Date</span>: {{ bill.billDate | date:'dd-MM-yyyy hh:mm a' }}</div>
+        <div><span class="rpt-meta-label">To</span>: {{ bill.customerName || 'Walk-in' }}</div>
       </div>
 
+      <!-- Product Table -->
+      <table class="rpt-table">
+        <colgroup>
+          <col class="col-desc-w">
+          <col class="col-rate-w">
+          <col class="col-qty-w">
+          <col class="col-amt-w">
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="th-desc">Description</th>
+            <th class="th-rate">Rate</th>
+            <th class="th-qty">Qty</th>
+            <th class="th-amt">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of ($any(bill).billItems || $any(bill).items || [])">
+            <td class="td-desc">{{ item.productName }}</td>
+            <td class="td-rate">{{ item.unitPrice | number:'1.2-2' }}</td>
+            <td class="td-qty">{{ item.quantity }}</td>
+            <td class="td-amt">{{ calcItemTotal(item) | number:'1.2-2' }}</td>
+          </tr>
+        </tbody>
+      </table>
+
       <div class="rpt-separator"></div>
 
-      <!-- Totals -->
-      <div class="rpt-total-row">
-        <span>Total Items : {{ ($any(bill).billItems || $any(bill).items || []).length }}</span>
-        <span class="totals-right">
-            <div style="display: flex; justify-content: space-between; gap: 8px;">
-                <span>Total Amt :</span><span>{{ bill.subTotal + bill.taxAmount | number:'1.2-2' }}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; gap: 8px;" *ngIf="getRoundedOff() !== 0">
-                <span>Round off :</span><span>{{ getRoundedOff() | number:'1.2-2' }}</span>
-            </div>
-        </span>
-      </div>
-      <div class="rpt-separator"></div>
-      <div class="rpt-net-amount">
-        <span>Net Amount</span>
-        <span>{{ bill.totalAmount | number:'1.2-2' }}</span>
-      </div>
-      <div class="rpt-separator"></div>
-      <div class="rpt-meta-row">
-        <div style="display: flex; justify-content: space-between;"><span>Total MRP : </span><span>{{ getTotalMRP() | number:'1.2-2' }}</span></div>
-        <div style="display: flex; justify-content: space-between;"><span>Total Rate : </span><span>{{ getTotalRate() | number:'1.2-2' }}</span></div>
-        <div class="rpt-savings" *ngIf="getTotalMRP() > getTotalRate()">
-        ** Today's Saving Rs. {{ (getTotalMRP() - getTotalRate()) | number:'1.2-2' }} **
+      <!-- Totals Section -->
+      <div class="rpt-totals-section">
+        <div class="rpt-line-item">
+          <span>Total Items : {{ ($any(bill).billItems || $any(bill).items || []).length }}</span>
+          <span>Total Amt : {{ bill.subTotal + bill.taxAmount | number:'1.2-2' }}</span>
+        </div>
+        <div class="rpt-line-item" *ngIf="getRoundedOff() !== 0" style="justify-content: flex-end;">
+          <span>Round off : {{ getRoundedOff() | number:'1.2-2' }}</span>
         </div>
       </div>
+
       <div class="rpt-separator"></div>
-      
-      <!-- Tax Table -->
-      <div class="rpt-col-header">
-        <span style="flex:1">GST%</span>
-        <span style="flex:1; text-align:right">Value</span>
-        <span style="flex:1; text-align:right">SGST</span>
-        <span style="flex:1; text-align:right">CGST</span>
+
+      <!-- Net Amount (bold & prominent) -->
+      <div class="rpt-net-amount">
+        <span>NET AMOUNT</span>
+        <span>{{ bill.totalAmount | number:'1.2-2' }}</span>
       </div>
+
       <div class="rpt-separator"></div>
-      <div class="rpt-item-row" *ngFor="let tax of getTaxBreakdownList()">
-        <span style="flex:1">{{ tax.percent }}</span>
-        <span style="flex:1; text-align:right">{{ tax.value | number:'1.2-2' }}</span>
-        <span style="flex:1; text-align:right">{{ tax.sgst | number:'1.2-2' }}</span>
-        <span style="flex:1; text-align:right">{{ tax.cgst | number:'1.2-2' }}</span>
+
+      <!-- MRP & Rate Summary -->
+      <div class="rpt-rate-summary">
+        <div class="rpt-line-item">
+          <span>Total MRP :</span>
+          <span>{{ getTotalMRP() | number:'1.2-2' }}</span>
+        </div>
+        <div class="rpt-line-item">
+          <span>Total Rate :</span>
+          <span>{{ getTotalRate() | number:'1.2-2' }}</span>
+        </div>
+        <div class="rpt-savings" *ngIf="getTotalMRP() > getTotalRate()">
+          ** Today's Saving Rs. {{ (getTotalMRP() - getTotalRate()) | number:'1.2-2' }} **
+        </div>
       </div>
+
+      <!-- GST Section -->
+      <div *ngIf="getTaxBreakdownList().length > 0">
+        <div class="rpt-separator"></div>
+        <table class="rpt-table rpt-tax-table">
+          <colgroup>
+            <col style="width: 44px;">
+            <col style="width: 76px;">
+            <col style="width: 72px;">
+            <col style="width: 72px;">
+          </colgroup>
+          <thead>
+            <tr>
+              <th style="text-align: left; padding-left: 2px;">GST%</th>
+              <th style="text-align: right; padding-right: 4px;">Value</th>
+              <th style="text-align: right; padding-right: 4px;">SGST</th>
+              <th style="text-align: right; padding-right: 2px;">CGST</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let tax of getTaxBreakdownList()">
+              <td style="text-align: left; padding-left: 2px;">{{ tax.percent }}%</td>
+              <td style="text-align: right; padding-right: 4px;">{{ tax.value | number:'1.2-2' }}</td>
+              <td style="text-align: right; padding-right: 4px;">{{ tax.sgst | number:'1.2-2' }}</td>
+              <td style="text-align: right; padding-right: 2px;">{{ tax.cgst | number:'1.2-2' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
       <div class="rpt-separator"></div>
-      <div class="rpt-thankyou">Thank You! Visit Again!!</div>
+      <div class="rpt-thankyou">THANK YOU! VISIT AGAIN!!</div>
     </div>
 
     <!-- Cancel Modal -->
@@ -241,7 +274,14 @@ import { FormsModule } from '@angular/forms';
       }
 
       .page, .app-header, nav, header, sidebar { display: none !important; }
-      body, html { margin: 0; padding: 0; background: #fff; width: 80mm; -webkit-print-color-adjust: exact; }
+      body, html {
+        margin: 0;
+        padding: 0;
+        background: #fff;
+        width: 80mm;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
 
       .receipt-print {
         display: block !important;
@@ -249,17 +289,17 @@ import { FormsModule } from '@angular/forms';
         max-width: 72mm !important;
         box-sizing: border-box !important;
         margin: 0 auto !important;
-        padding: 2mm 2mm 15mm 2mm;
+        padding: 2mm 1mm 25mm 1mm;
         font-family: 'Courier New', Courier, monospace;
         color: #000;
-        font-size: 11px;
+        font-size: 10.5px;
         font-weight: 700;
-        line-height: 1.4;
+        line-height: 1.35;
       }
 
       .rpt-store-name {
         font-size: 16px;
-        font-weight: bold;
+        font-weight: 900;
         text-align: center;
         letter-spacing: 0.5px;
         margin-bottom: 2px;
@@ -267,83 +307,141 @@ import { FormsModule } from '@angular/forms';
       }
 
       .rpt-store-addr, .rpt-store-phone {
-        font-size: 11px;
+        font-size: 10.5px;
+        font-weight: 700;
         text-align: center;
         margin-bottom: 1px;
+        line-height: 1.25;
       }
 
       .rpt-title {
         font-size: 13px;
-        font-weight: bold;
+        font-weight: 900;
         text-align: center;
         margin: 3px 0;
-        letter-spacing: 1px;
+        letter-spacing: 1.5px;
       }
 
       .rpt-separator {
         border-top: 1px dashed #000;
-        margin: 5px 0;
+        margin: 4px 0;
       }
 
-      .rpt-meta-row {
-        font-size: 11px;
-        line-height: 1.3;
+      .rpt-meta-info {
+        font-size: 10.5px;
+        font-weight: 700;
+        line-height: 1.35;
       }
 
-      .rpt-col-header {
-        display: flex;
-        font-size: 11px;
-        font-weight: bold;
-        margin: 3px 0;
+      .rpt-meta-label {
+        display: inline-block;
+        width: 72px;
       }
 
-      .rpt-item-row {
-        display: flex;
-        font-size: 11px;
-        margin: 2px 0;
-        align-items: flex-start;
+      /* Clean Table Format with Fixed Column Widths */
+      .rpt-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        font-family: inherit;
+        font-size: 10.5px;
+        font-weight: 700;
+        margin: 1px 0;
       }
 
-      .col-desc  { flex: 1; min-width: 0; padding-right: 4px; overflow: hidden; word-break: break-word; }
-      .col-rate  { width: 46px; text-align: right; flex-shrink: 0; }
-      .col-qty   { width: 26px; text-align: right; flex-shrink: 0; }
-      .col-amt   { width: 52px; text-align: right; flex-shrink: 0; }
+      .col-desc-w { width: auto; }
+      .col-rate-w { width: 68px; }
+      .col-qty-w  { width: 34px; }
+      .col-amt-w  { width: 74px; }
 
-      .rpt-total-row {
+      .rpt-table th, .rpt-table td {
+        box-sizing: border-box;
+        overflow: hidden;
+      }
+
+      .rpt-table thead th {
+        font-size: 10.5px;
+        font-weight: 900;
+        padding: 3px 1px;
+        border-top: 1px dashed #000;
+        border-bottom: 1px dashed #000;
+      }
+
+      .rpt-table tbody td {
+        padding: 2px 1px;
+        vertical-align: top;
+        font-size: 10.5px;
+        font-weight: 700;
+      }
+
+      .th-desc, .td-desc {
+        text-align: left;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        white-space: normal;
+        line-height: 1.25;
+        padding-right: 4px !important;
+      }
+
+      .th-rate, .td-rate {
+        text-align: right;
+        white-space: nowrap;
+        padding-right: 4px !important;
+      }
+
+      .th-qty, .td-qty {
+        text-align: center;
+        white-space: nowrap;
+        padding-left: 2px !important;
+        padding-right: 2px !important;
+      }
+
+      .th-amt, .td-amt {
+        text-align: right;
+        white-space: nowrap;
+        padding-right: 2px !important;
+      }
+
+      /* Totals & Net Amount */
+      .rpt-totals-section, .rpt-rate-summary {
+        font-size: 10.5px;
+        font-weight: 700;
+        line-height: 1.35;
+      }
+
+      .rpt-line-item {
         display: flex;
         justify-content: space-between;
-        font-size: 11px;
-        margin: 3px 0;
-      }
-
-      .totals-right {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
+        align-items: center;
+        margin: 1px 0;
       }
 
       .rpt-net-amount {
         display: flex;
         justify-content: space-between;
+        align-items: center;
         font-size: 15px;
-        font-weight: bold;
-        margin: 5px 0;
+        font-weight: 900;
+        margin: 4px 0;
+        letter-spacing: 0.5px;
       }
 
       .rpt-savings {
-        font-size: 12px;
-        font-weight: bold;
+        font-size: 11.5px;
+        font-weight: 900;
         text-align: center;
-        margin-top: 6px;
+        margin-top: 5px;
         border: 1px dashed #000;
-        padding: 4px 0;
+        padding: 3px 0;
+        letter-spacing: 0.5px;
       }
 
       .rpt-thankyou {
         font-size: 13px;
-        font-weight: bold;
+        font-weight: 900;
         text-align: center;
-        margin-top: 10px;
+        margin-top: 8px;
+        letter-spacing: 1px;
         padding-bottom: 25mm;
       }
     }
