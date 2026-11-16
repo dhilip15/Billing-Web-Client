@@ -554,7 +554,11 @@ ${sheetsHtml}
   openModal(p?: ProductDto): void {
     if (p) {
       this.editId = p.id;
-      this.form = { ...p };
+      this.form = {
+        ...p,
+        manufactureDate: p.manufactureDate ? p.manufactureDate.substring(0, 10) : '',
+        expiryDate: p.expiryDate ? p.expiryDate.substring(0, 10) : ''
+      };
     } else {
       this.editId = null;
       this.form = this.defaultForm();
@@ -568,7 +572,11 @@ ${sheetsHtml}
       return;
     }
     this.saving = true;
-    const req = { ...this.form };
+    const req = {
+      ...this.form,
+      manufactureDate: this.form.manufactureDate ? this.form.manufactureDate : null,
+      expiryDate: this.form.expiryDate ? this.form.expiryDate : null
+    };
     if (this.editId) {
       this.productService.update(this.editId, req).subscribe({
         next: (res) => {

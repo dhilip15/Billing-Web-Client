@@ -113,8 +113,20 @@ interface CartItem {
               <div *ngFor="let item of cart; let i = index" class="cart-row">
                 <div class="cart-item-info">
                   <div class="cart-name">{{ item.name }}</div>
-                  <div class="cart-sku text-xs text-muted">{{ item.sku }} · ₹{{ item.unitPrice }}</div>
+                  <div class="cart-sku text-xs text-muted">{{ item.sku }} · MRP: ₹{{ item.originalPrice | number:'1.2-2' }}</div>
                 </div>
+<div class="cart-price-edit">
+    <div class="price-input-wrapper">
+        <span class="currency-symbol">₹</span>
+        <input type="number" class="price-input"
+            [(ngModel)]="item.unitPrice"
+            placeholder="180"
+            min="0"
+            step="any"
+            (change)="onPriceChange(item)"
+            [title]="'Original: ₹' + item.originalPrice"/>
+    </div>
+</div>
                 <div class="cart-controls">
                   <button class="qty-btn" (click)="decreaseQty(i)">−</button>
                   <input type="number" class="qty-input" [(ngModel)]="item.quantity" min="0.001" step="any" (change)="calcTotals()"/>
@@ -250,6 +262,49 @@ interface CartItem {
     }
     .cart-item-info { flex: 1; min-width: 0; }
     .cart-name { font-size: 0.875rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cart-price-edit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+}
+
+.price-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.currency-symbol {
+    position: absolute;
+    left: 7px;
+    color: var(--color-text);
+    font-size: 0.8125rem;
+    pointer-events: none;
+}
+
+.price-input {
+    width: 75px;
+    padding: 3px 5px 3px 18px;
+    text-align: center;
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-text);
+    font-family: inherit;
+    font-size: 0.8125rem;
+    outline: none;
+    transition: border-color var(--transition-fast);
+
+    &:focus {
+        border-color: var(--color-primary);
+    }
+
+    &::-webkit-inner-spin-button {
+        opacity: 0;
+        width: 0;
+    }
+}
     .cart-controls { display: flex; align-items: center; gap: 4px; }
     .qty-btn {
       width: 28px; height: 28px;
@@ -308,7 +363,7 @@ export class NewBillComponent implements OnInit, AfterViewInit {
     private route: ActivatedRoute,
     private router: Router,
     private toast: ToastService
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.categoryService.getAll().subscribe({
@@ -391,6 +446,7 @@ export class NewBillComponent implements OnInit, AfterViewInit {
             unit: i.unit || '',
             quantity: i.quantity,
             unitPrice: i.unitPrice,
+            originalPrice: i.unitPrice,
             taxPercent: i.taxPercent,
             discount: i.discountAmount || i.discount || 0
           }));
@@ -420,7 +476,7 @@ export class NewBillComponent implements OnInit, AfterViewInit {
       this.customerName = '';
       return;
     }
-    
+
     const matched = this.customers.find(c => c.phone === phone);
     if (matched) {
       this.selectedCustomerId = matched.id;
@@ -554,6 +610,7 @@ export class NewBillComponent implements OnInit, AfterViewInit {
         unit: product.unit,
         quantity: 1,
         unitPrice: product.sellingPrice,
+        originalPrice: product.sellingPrice,
         taxPercent: product.taxPercent,
         discount: 0,
       });
@@ -575,16 +632,25 @@ export class NewBillComponent implements OnInit, AfterViewInit {
     return (qty * price) - disc;
   }
 
+  onPriceChange(item: any): void {
+    const newPrice = Number(item.unitPrice) || 0;
+    if (newPrice < 0) {
+      item.unitPrice = item.originalPrice;
+      this.toast.error('Price cannot be negative');
+    }
+    this.calcTotals();
+  }
+
   calcTotals(): void {
     // Total should not add tax if unitPrice is already MRP
     this.totalAmount = this.cart.reduce((s: number, i: any) => s + ((Number(i.quantity) || 0) * (Number(i.unitPrice) || 0) - (Number(i.discount) || 0)), 0);
-    
+
     // Tax amount calculated directly on the MRP as per user expectation
     this.taxAmount = this.cart.reduce((s: number, i: any) => s + ((Number(i.quantity) || 0) * (Number(i.unitPrice) || 0) * ((Number(i.taxPercent) || 0) / 100)), 0);
-    
+
     // Subtotal is Total minus Tax to balance the bill mathematically
     this.subTotal = this.totalAmount - this.taxAmount;
-    
+
     this.paidAmount = this.payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
     this.balanceDue = Math.max(0, this.totalAmount - this.paidAmount);
   }
@@ -667,7 +733,7 @@ export class NewBillComponent implements OnInit, AfterViewInit {
       this.payments.push({ mode: PaymentMode.Cash, amount: this.totalAmount });
       this.calcTotals();
     }
-    
+
     this.ensureCustomerAndExecute(() => {
       this.saving = 'finalize';
       if (this.recalledBillId) {
